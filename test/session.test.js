@@ -6,6 +6,67 @@ const origin = 'https://pc.example.test';
 const workspace = { id: '0123456789abcdef', label: 'Project A', online: true };
 const first = { id: '11111111-1111-4111-8111-111111111111', name: 'First', live: true };
 const second = { id: '22222222-2222-4222-8222-222222222222', name: 'Second', live: true };
+const ask = { ask_id: 'ask-1', tool: 'shell', detail: 'echo hello', risk: 'Run a command', expires_at_ms: 99999999 };
+
+test('approval waits for correlated ack, prevents double taps and handles resolution-before-ack', async () => {
+  const f = fixture(); await f.attach({ asks: [ask] });
+  f.model.openApproval(ask.ask_id); f.model.answerApproval(true); f.model.answerApproval(false);
+  const replies = f.connections[0].sent.filter((record) => record.command.type === 'permission_reply');
+  assert.equal(replies.length, 1); assert.equal(f.model.approval.state, 'submitting');
+  f.emit({ type: 'permission_resolved', ask_id: ask.ask_id, outcome: 'allowed', by: { kind: 'device', id: 'other' } }, { seq: 6 });
+  assert.equal(f.model.approval.state, 'submitting');
+  f.emit({ type: 'accepted' }, { id: replies[0].id });
+  assert.equal(f.model.approval.state, 'resolved'); assert.equal(f.model.approval.allow, true);
+});
+
+test('approval races, expiry, unknown outcomes and unavailable asks never replay', async () => {
+  for (const [code, state] of [['already_resolved', 'elsewhere'], ['expired', 'expired'], ['unknown_ask', 'unavailable'], ['outcome_unknown', 'unknown'], ['forbidden', 'refused']]) {
+    const f = fixture(); await f.attach({ asks: [ask] });
+    f.model.openApproval(ask.ask_id); f.model.answerApproval(false);
+    const id = f.connections[0].sent.at(-1).id;
+    f.emit({ type: 'rejected', code, message: 'PC refusal' }, { id });
+    assert.equal(f.model.approval.state, state); assert.equal(f.model.canApprove, false);
+    f.model.answerApproval(true);
+    assert.equal(f.connections[0].sent.filter((r) => r.command.type === 'permission_reply').length, 1);
+  }
+});
+
+test('approval deadline, observe scope, stale epoch, resync and disconnect lock answers', async () => {
+  for (const scope of ['observe', null]) {
+    const f = fixture(scope); await f.attach({ asks: [ask] }); f.model.openApproval(ask.ask_id);
+    assert.equal(f.model.canApprove, false);
+  }
+  const f = fixture(); await f.attach({ asks: [{ ...ask, expires_at_ms: 1 }] }); f.model.openApproval(ask.ask_id);
+  assert.equal(f.model.canApprove, false);
+  f.model.approval = null; f.model.asks = [ask]; f.model.openApproval(ask.ask_id);
+  f.emit({ type: 'resync_required', epoch: 'new' }); assert.equal(f.model.canApprove, false);
+  f.emit(f.snapshot({ epoch: 'new', asks: [ask] })); assert.equal(f.model.canApprove, true);
+  f.model.approval = null; f.model.openApproval(ask.ask_id); f.model.answerApproval(true);
+  f.connections[0].onclose(); assert.equal(f.model.approval.state, 'unknown'); assert.equal(f.model.canApprove, false);
+});
+
+test('an unchanged approval survives unknown and full snapshots across epochs; changed detail locks it', async () => {
+  const f = fixture(); await f.attach({ asks: [ask] }); f.model.openApproval(ask.ask_id);
+  f.emit({ type: 'resync_required', epoch: 'X' });
+  f.emit(f.snapshot({ epoch: 'X', turn: 'unknown', history: [], asks: [] }));
+  assert.equal(f.model.approval.state, 'pending'); assert.equal(f.model.canApprove, false);
+  f.emit({ type: 'resync_required', epoch: 'Y' });
+  f.emit(f.snapshot({ epoch: 'Y', asks: [ask] }));
+  assert.equal(f.model.approval.epoch, 'Y'); assert.equal(f.model.canApprove, true);
+  f.emit({ type: 'asks_resync', asks: [{ ...ask, detail: 'different command' }] }, { seq: 6 });
+  assert.equal(f.model.approval.state, 'unavailable'); assert.equal(f.model.canApprove, false);
+});
+
+test('approval ack before feed remains resolved and unknown refusal stays disclosed after reattach', async () => {
+  const f = fixture(); await f.attach({ asks: [ask] }); f.model.openApproval(ask.ask_id); f.model.answerApproval(false);
+  f.emit({ type: 'accepted' }, { id: f.connections[0].sent.at(-1).id });
+  f.emit({ type: 'permission_resolved', ask_id: ask.ask_id, outcome: 'denied' }, { seq: 6 });
+  assert.equal(f.model.approval.state, 'resolved');
+  f.model.approval = null; f.model.asks = [ask]; f.model.openApproval(ask.ask_id); f.model.answerApproval(true);
+  f.emit({ type: 'rejected', code: 'outcome_unknown', message: 'Unknown' }, { id: f.connections[0].sent.at(-1).id });
+  assert.match(f.model.outcomeIssue, /Approval outcome unknown/);
+  f.model.attach(first.id); assert.match(f.model.outcomeIssue, /Approval outcome unknown/);
+});
 function fixture(scope = 'control') {
   const connections = [], timers = new Map(), requests = [];
   let clock = 0;

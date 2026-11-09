@@ -3,8 +3,10 @@
 LocalPilot serves this build at the gateway origin root. The browser makes no
 third-party runtime loads. This version supports pairing by camera QR scan or
 manual entry and snapshot-first shared-session attachment with acknowledged
-input, Stop and typed slash commands. Push, phone approval and offline caching
-are not implemented.
+input, Stop, typed slash commands and acknowledged phone approvals. Attention
+covers requests in the attached shared session. Devices shows this phone and
+can revoke its access. Push has explicit opt-in, test and off controls; offline
+caching is not implemented.
 
 ## Build and identity
 
@@ -62,7 +64,10 @@ The shell works with external same-origin scripts/styles and a restrictive
 CSP; no inline script or style, remote font, CDN or telemetry is needed.
 
 Replace the complete pinned tree atomically when upgrading or rolling back.
-No service worker is registered yet. Offline caching and safe update prompts
+`/push-worker.js` is a stable root URL, listed and verified in the bundle, served
+with `Cache-Control: no-cache`. It registers with scope `/` only after explicit
+notification enablement. It handles push and notification clicks only; no fetch
+handler, cache, forced activation or offline mutations. Offline caching and safe update prompts
 must arrive with reconciliation and draft protection; do not add unconditional
 `skipWaiting`, cached API responses or an offline mutation queue.
 
@@ -139,17 +144,43 @@ entry. Tracks stop on a decoded result, cancellation, navigation, page hide or
 camera failure. A permission or decoder reply arriving after cancellation
 cannot revive the scan. No third-party runtime decoder is loaded.
 
-The push contract reserved for the notification implementation is:
+The push contract is:
 
 - `GET /api/push?workspace=<encoded-id>` → `{public_key, key_id}`.
 - `POST /api/push?workspace=<encoded-id>` with JSON
   `{op: "subscribe", endpoint, p256dh, auth, key_id}` or `{op: "unsubscribe"}`
   → `{subscribed: true|false}`.
 - After a key rotation, subscribe again with the new key and `key_id`.
+- Test: POST the same route with `{op: "test"}` → `{sent: true}` after
+  the real push service accepts the send. This does not prove phone display.
+  409/410 asks the user to enable again; 503 means PC push is disabled;
+  429 means wait (server limits tests to once per 30 seconds); 502 means
+  the service refused or could not be reached.
+
+`GET /api/device` lists only this verified device:
+`{id, name, scope, this_workspace_only, paired_unix}`. Managing other devices
+remains on the PC. POST `/api/device/revoke` with an empty body returns
+`{revoked: true}` and clears the credential cookie. A lost revoke response
+triggers one read-only device probe; 401 confirms access ended. No POST retry.
+These endpoints, test push and typed relay expiry refusals require LocalPilot
+`8a32160` or newer. LocalPilot embedding/repinning is a separate server task.
+
+Approvals send `{type: "permission_reply", ask_id, allow}` over the bound relay.
+The sheet retains submitting until correlated `accepted` or `rejected`; feed
+resolution alone does not acknowledge this phone's submission. `already_resolved`,
+`expired` and `unknown_ask` produce distinct terminal states. Deadline display
+locks late taps; the PC decides the actual outcome. Resync, unknown scope and
+disconnect lock answers; no approval is replayed. Each sheet names project and
+session, shows exact detail/risk/expiry, and offers only Deny and Allow once.
 
 Ask for notification permission only after pairing and a separate user action.
 Browser permission alone does not prove a registered or working subscription.
 Notifications carry generic text; opening one refetches state and never approves.
+Enable/re-enable explicitly registers against the selected project's current
+key; reloads do not silently register. The UI reports unconfirmed until that
+registration is acknowledged. Off unregisters on the server for the selected
+project, retaining the browser subscription because other projects may use it.
+No subscription endpoint, keys or API results are persisted by page scripts.
 
 ## Tooling references
 

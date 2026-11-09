@@ -40,7 +40,7 @@ export async function buildBundle({ root, out, revision, dirty }) {
   const digest = sha256(json([...sources].map(([path, bytes]) => [path, sha256(bytes)])));
   const payload = new Map();
   for (const [path, bytes] of sources) {
-    if (path === 'index.html' || path === 'manifest.webmanifest') {
+    if (path === 'index.html' || path === 'manifest.webmanifest' || path === 'push-worker.js') {
       payload.set(path, Buffer.from(bytes.toString('utf8').replaceAll('__ASSET_DIGEST__', digest)));
     } else payload.set(`assets/${digest}/${path}`, bytes);
   }
