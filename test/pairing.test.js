@@ -26,6 +26,16 @@ function fixture(responses = [], options = {}) {
   return { pairing, calls, changes };
 }
 
+test('every access probe reads verified scope; a null scope removes previously granted control', async () => {
+  const workspaces = [{ id: workspace, label: 'Project', online: true }];
+  const f = fixture([reply(200, { scope: 'control', workspaces }), reply(200, { scope: 'observe', workspaces }), reply(200, { scope: null, workspaces })]);
+  await f.pairing.check(); assert.equal(f.pairing.scope, 'control');
+  await f.pairing.check(); assert.equal(f.pairing.scope, 'observe');
+  await f.pairing.check(); assert.equal(f.pairing.scope, null);
+  assert.deepEqual(f.pairing.workspaces, workspaces);
+  assert.equal(f.pairing.state, 'paired');
+});
+
 test('manual details and gateway QR links use the issuing workspace', () => {
   assert.deepEqual(parsePairing(link, '', origin), { code: 'single-use', workspace });
   assert.deepEqual(parsePairing(' abc.def ', workspace, origin), { code: 'abc.def', workspace });

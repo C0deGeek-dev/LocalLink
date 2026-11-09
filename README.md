@@ -27,8 +27,8 @@ npm run preview
 Open `http://127.0.0.1:4173`. This local preview has three destinations and
 system light/dark themes. Pairing requires the app to be served by your
 LocalPilot gateway at its trusted HTTPS address; the HTTP preview cannot pair
-and does not proxy the gateway. Session attachment, answering requests,
-notifications and offline support are still being built.
+and does not proxy the gateway. Answering requests, notifications and offline
+caching are still being built.
 
 ## Pairing
 
@@ -49,6 +49,37 @@ stores pairing codes. A code is exchanged once, only after confirmation. If a
 reply is lost, LocalLink checks access without repeating the exchange. Use
 **Check connection** to verify access again; create a fresh PC code if access
 was revoked or a code has expired, been used, or been closed on the PC.
+
+## Following a session
+
+After pairing, choose a project, then a shared terminal session. The phone
+follows the session already open on your PC; it cannot start a new session.
+Closing that terminal ends phone access to the session.
+
+The conversation shows stored text and live assistant output. Expand **Tool
+activity** for tools received live during the turn in progress, or **Session
+plan** for the current plan. Past tool activity is unavailable. Messages typed
+on the PC appear when the next snapshot arrives; messages sent from
+this phone are labelled locally after the PC acknowledges them.
+
+Control access offers **Send** when idle, **Follow up** while working, and a
+separate **Stop turn** labelled with its project. Device steering is unavailable.
+**Slash commands** comes from the PC's advertised catalogue. Commands use a
+typed route; unknown slash text is refused and never sent as a model prompt.
+While working, only `/effort` is available from the picker. Requests needing
+approval must currently be answered on the PC.
+
+Controls stay locked until a compatible attachment and snapshot arrive, and
+when scope or turn state is unknown. Observe access can only view. A lost
+connection keeps the displayed view and unsent draft in this page, with the
+last-sync time. **Reconnect** fetches a new snapshot; it never resends input.
+If a mutation reply is lost, its outcome is explicitly unknown: check the PC
+before sending again. Drafts are held in memory per session, and disappear on
+reload or when access is revoked. There is no offline queue or automatic retry.
+
+The gateway must report device scope in `GET /api/workspaces` (LocalPilot
+`ea8b041` or later). Older gateways can pair, but returning phones without a
+reported scope keep their controls locked.
 
 `npm run build` writes `dist/`; `npm run verify:bundle` verifies its complete
 file set and hashes. `npm run build:release` requires a clean checkout. CI tests

@@ -2,9 +2,9 @@
 
 LocalPilot serves this build at the gateway origin root. The browser makes no
 third-party runtime loads. This version supports pairing by camera QR scan or
-manual entry. RPC attachment, session controls, push and offline support are
-not implemented. The manifest's protocol range records the intended connection
-contract, not a claim that this build can attach.
+manual entry and snapshot-first shared-session attachment with acknowledged
+input, Stop and typed slash commands. Push, phone approval and offline caching
+are not implemented.
 
 ## Build and identity
 
@@ -28,8 +28,8 @@ dependencies. Neither tool enters the browser bundle.
 | `version` | Client version from `VERSION`, checked against `package.json` |
 | `source_revision` | Full 40-character Git HEAD revision |
 | `source_dirty` | Whether tracked or untracked source changes existed |
-| `client_status` | `pairing`; no live session support yet |
-| `protocol.min`, `protocol.max` | Intended inclusive RPC version range, currently `1` |
+| `client_status` | `sessions`; shared-session viewing and acknowledged controls |
+| `protocol.min`, `protocol.max` | Inclusive RPC version range, currently `1` |
 | `protocol.required_capabilities` | `acks`, `resume`, `retry`, `commands` |
 | `files` | Sorted array of `{path, sha256, bytes, content_type}` for every served file |
 
@@ -98,7 +98,40 @@ confirms whether the existing cookie still works. Confirmed access stays paired,
 with the new code's failure shown separately.
 Throttling honours
 `Retry-After`; there are no automatic POST retries. Revocation is detected on
-the next explicit access check; continuous session reconciliation comes later.
+the next explicit access check or authenticated session-list refusal; a socket
+close locks controls, without guessing whether it was a revocation or a network
+failure.
+
+`GET /api/workspaces` supplies `{scope, workspaces}`; each workspace has an
+`id`, `label`, and `online`. Scope is `control`, `observe`, or null. A returning
+phone with missing/null scope cannot mutate. A same-page pairing may retain
+the scope from its successful exchange when an older gateway omits the field;
+an explicit null always removes control. LocalPilot `ea8b041` supplies scope.
+Session metadata comes from `GET /api/sessions?workspace=<id>`; only a user-picked
+live session opens `wss://<same-origin>/api/socket?workspace=<id>&session=<id>`.
+The gateway sends `attached` and `snapshot`; the client sends no `attach`,
+`hello`, `status`, or new-session command on this already-bound relay.
+
+RPC records use `{v: 1, id, command: {type, ...}}`; replies are
+`{v: 1, id?, seq?, event: {type, ...}}`. Matching session identity, epoch,
+`acks` and `resume` capabilities plus a snapshot are required before controls.
+The verified snapshot owns its epoch: a newer mirror install can overtake the
+resync notice that prompted it. Temporary unknown/empty boundary snapshots
+leave the previous transcript visible as stale, with controls locked, until
+a usable snapshot arrives. Idle snapshot `turn_text` is omitted from the view
+because it repeats the completed assistant message in stored history.
+The `commands` capability enables a catalogue request and typed
+`run_command {name, args}`. Device input supports `immediate` and `follow_up`;
+the shared relay refuses `steer`. Accepted/queued/rejected and command-result
+replies correlate by ID. Only snapshot/live feed events change turn status;
+reply delivery can race the feed. Sequence gaps alone are legal due to filtering.
+Resync locks controls until a new snapshot; disconnects require manual fresh
+attachment. No mutation is retried, including after a timeout or lost reply.
+
+The snapshot contains transcript text, not historical tool groups. Local tool
+activity is explicitly for the turn in progress. Phone input is echoed
+after acknowledgement; input typed on the PC is available after another
+snapshot. Drafts are in-memory and per-session; API responses are never cached.
 
 Camera access is user-initiated, QR support is feature-detected with
 `BarcodeDetector.getSupportedFormats()`, and unsupported browsers retain manual

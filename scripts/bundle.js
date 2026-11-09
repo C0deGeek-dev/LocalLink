@@ -49,7 +49,7 @@ export async function buildBundle({ root, out, revision, dirty }) {
   }));
   const manifest = {
     schema_version: 1, version, source_revision: revision, source_dirty: dirty,
-    client_status: 'pairing',
+    client_status: 'sessions',
     protocol: { min: 1, max: 1, required_capabilities: ['acks', 'resume', 'retry', 'commands'] },
     files,
   };
