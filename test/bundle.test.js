@@ -38,7 +38,7 @@ test('manifest hashes exactly the complete tree, with portable paths and local r
   assert.equal(digest, sha256(await readFile(join(out, 'bundle.json'))));
   assert.equal(manifest.source_revision, revision);
   assert.equal(manifest.source_dirty, false);
-  assert.equal(manifest.client_status, 'scaffold');
+  assert.equal(manifest.client_status, 'pairing');
   const html = await readFile(join(out, 'index.html'), 'utf8');
   assert.doesNotMatch(html, /__ASSET_DIGEST__|https?:\/\/|\son\w+=|<script(?![^>]*src=)/);
   const urls = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((match) => match[1]);

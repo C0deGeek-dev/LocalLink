@@ -25,9 +25,30 @@ npm run preview
 ```
 
 Open `http://127.0.0.1:4173`. This local preview has three destinations and
-system light/dark themes. It cannot pair, attach to a session, answer requests,
-send notifications or work offline yet. Preview serving binds only loopback
-and does not proxy the gateway.
+system light/dark themes. Pairing requires the app to be served by your
+LocalPilot gateway at its trusted HTTPS address; the HTTP preview cannot pair
+and does not proxy the gateway. Session attachment, answering requests,
+notifications and offline support are still being built.
+
+## Pairing
+
+Open the app at the HTTPS address shown by LocalPilot on your computer.
+Keep the PC’s pairing screen open. Scan its QR code using your phone camera
+or LocalLink’s **Scan QR code**, or paste the complete pairing link into
+**Pairing link or code**. For a bare code, also enter its workspace ID.
+Check the PC address, then choose **Pair this phone**. LocalLink shows the
+granted observe/control scope after the gateway confirms access.
+
+Scanning inside the app requires a browser with native QR detection. If the
+camera is unavailable or permission is denied, use manual entry. No camera
+permission is requested until you choose to scan.
+
+The gateway keeps the device credential in a Secure, HttpOnly, SameSite=Strict
+`__Host-localpilot-device` cookie. Client script never reads that credential or
+stores pairing codes. A code is exchanged once, only after confirmation. If a
+reply is lost, LocalLink checks access without repeating the exchange. Use
+**Check connection** to verify access again; create a fresh PC code if access
+was revoked or a code has expired, been used, or been closed on the PC.
 
 `npm run build` writes `dist/`; `npm run verify:bundle` verifies its complete
 file set and hashes. `npm run build:release` requires a clean checkout. CI tests

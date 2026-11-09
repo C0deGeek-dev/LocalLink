@@ -1,8 +1,8 @@
 # Client bundle contract
 
 LocalPilot serves this build at the gateway origin root. The browser makes no
-third-party runtime loads. This version is a **scaffold**, with local navigation
-only: pairing, RPC attachment, session controls, push and offline support are
+third-party runtime loads. This version supports pairing by camera QR scan or
+manual entry. RPC attachment, session controls, push and offline support are
 not implemented. The manifest's protocol range records the intended connection
 contract, not a claim that this build can attach.
 
@@ -28,7 +28,7 @@ dependencies. Neither tool enters the browser bundle.
 | `version` | Client version from `VERSION`, checked against `package.json` |
 | `source_revision` | Full 40-character Git HEAD revision |
 | `source_dirty` | Whether tracked or untracked source changes existed |
-| `client_status` | `scaffold`; no live session support yet |
+| `client_status` | `pairing`; no live session support yet |
 | `protocol.min`, `protocol.max` | Intended inclusive RPC version range, currently `1` |
 | `protocol.required_capabilities` | `acks`, `resume`, `retry`, `commands` |
 | `files` | Sorted array of `{path, sha256, bytes, content_type}` for every served file |
@@ -72,6 +72,39 @@ The gateway issues a Secure, HttpOnly, SameSite=Strict `__Host-` credential.
 Script must never read or store that credential. Pairing tokens belong only in
 the QR URL fragment and exchange POST body. Workspace discovery is the
 gateway's responsibility; all authorization remains on the PC.
+
+Pairing links use `https://<gateway>/#pair=<code>&w=<workspace-id>`. LocalLink
+removes the fragment immediately, validates the exact current HTTPS origin,
+and requires explicit confirmation before `POST /api/pair` with JSON
+`{code, workspace}`. The response supplies `{device_id, scope}`; the credential
+is only in the gateway's `Set-Cookie`. A subsequent `GET /api/workspaces`
+confirms the browser retained an accepted credential. All requests use
+same-origin credentials, bypass caches and refuse redirects. No code, cookie,
+or API result is persisted by the client.
+
+The gateway must accept browser same-origin reads without an `Origin` header;
+JavaScript cannot supply that header itself. A gateway requiring `Origin` on
+GET will show the address-refused state rather than confirming pairing.
+POST and WebSocket origin validation remains the gateway's responsibility.
+
+Code rejection groups expired, used, invalid and PC-cancelled codes because
+the gateway deliberately returns the same refusal for them. The UI distinguishes
+that refusal from an origin mismatch, throttling, missing/offline workspace,
+cookie refusal, inaccessible PC and unknown exchange outcome. Within the same
+page lifetime, a previously confirmed phone losing access is labelled as such;
+after reload, a missing or revoked credential opens the ordinary pairing flow.
+If a new pairing exchange fails on an already paired page, a read-only check
+confirms whether the existing cookie still works. Confirmed access stays paired,
+with the new code's failure shown separately.
+Throttling honours
+`Retry-After`; there are no automatic POST retries. Revocation is detected on
+the next explicit access check; continuous session reconciliation comes later.
+
+Camera access is user-initiated, QR support is feature-detected with
+`BarcodeDetector.getSupportedFormats()`, and unsupported browsers retain manual
+entry. Tracks stop on a decoded result, cancellation, navigation, page hide or
+camera failure. A permission or decoder reply arriving after cancellation
+cannot revive the scan. No third-party runtime decoder is loaded.
 
 The push contract reserved for the notification implementation is:
 
