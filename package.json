@@ -1,0 +1,22 @@
+{
+  "name": "@localx/locallink",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "build": "node scripts/build.js",
+    "build:release": "node scripts/build.js --release",
+    "test": "node --test",
+    "lint": "eslint . --max-warnings 0",
+    "check": "npm run lint && npm test && npm run build",
+    "verify:bundle": "node scripts/verify-bundle.js dist",
+    "preview": "node scripts/preview.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "eslint": "9.39.5"
+  }
+}
