@@ -102,8 +102,8 @@ try {
     assert.equal(await page.locator('#main').evaluate((node) => node === document.activeElement), true);
     paired = true;
     await page.locator('#check-connection').click();
-    await page.locator('#session-workspace').selectOption(workspace);
-    await page.locator('#session-list button').click();
+    await page.locator('.project-group summary').click();
+    await page.locator('.session-choice').click();
     await page.getByText('Working', { exact: true }).waitFor();
     await page.locator('.code-block').last().focus();
     await page.evaluate(() => {
@@ -197,8 +197,8 @@ try {
     assert.equal(await page.locator('html').evaluate((node) => getComputedStyle(node).backgroundColor), 'rgb(245, 243, 236)');
     await page.emulateMedia({ colorScheme });
     await page.locator('[data-destination="sessions"]').click();
-    await page.locator('#session-workspace').selectOption(workspace);
-    await page.locator('#session-list button').click();
+    await page.locator('.project-group summary').click();
+    await page.locator('.session-choice').click();
     await page.getByText('Working', { exact: true }).waitFor();
     await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
     await scan('large-text-session');

@@ -68,20 +68,20 @@ test('old installed client/new server and new client/old server refuse before an
     [{ min: 2, max: 2, required_capabilities: ['acks', 'resume'] }, 1, 'old-server'],
   ]) {
     const f = fixture('control', supported);
-    await f.model.list(workspace.id); f.model.attach(first.id);
+    await f.model.loadProject(workspace.id); f.model.openProjectSession(workspace.id, first.id);
     f.connections[0].onmessage({ data: JSON.stringify({ v: serverWire, event: { type: 'attached', session_id: first.id,
       server_version: serverWire === 1 ? '0.1.0' : '2.0.0', epoch: 'epoch', capabilities: ['acks', 'resume', 'commands'] } }) });
     f.model.submit('must not run'); f.model.stop();
     assert.equal(f.model.phase, 'incompatible'); assert.equal(f.model.compatibility, issue);
     assert.deepEqual(f.connections[0].sent, []);
   }
-  const f = fixture(); await f.model.list(workspace.id); f.model.attach(first.id);
+  const f = fixture(); await f.model.loadProject(workspace.id); f.model.openProjectSession(workspace.id, first.id);
   f.emit({ type: 'attached', session_id: first.id, epoch: 'epoch', server_version: '0.0.1', capabilities: ['acks'] });
   assert.equal(f.model.compatibility, 'old-server'); assert.deepEqual(f.connections[0].sent, []);
 });
 
 test('compatible newer product release and additive capabilities retain the wire contract', async () => {
-  const f = fixture(); await f.model.list(workspace.id); f.model.attach(first.id);
+  const f = fixture(); await f.model.loadProject(workspace.id); f.model.openProjectSession(workspace.id, first.id);
   f.emit({ type: 'attached', session_id: first.id, epoch: 'epoch', server_version: '99.0.0', capabilities: ['acks', 'resume', 'future'] });
   f.emit(f.snapshot());
   assert.equal(f.model.canControl, true); assert.equal(f.model.serverVersion, '99.0.0');
@@ -97,6 +97,39 @@ test('approval waits for correlated ack, prevents double taps and handles resolu
   assert.equal(f.model.approval.state, 'submitting');
   f.emit({ type: 'accepted' }, { id: replies[0].id });
   assert.equal(f.model.approval.state, 'resolved'); assert.equal(f.model.approval.allow, true);
+});
+
+test('omitted live ask deadline means zero and survives snapshot and asks-resync normalization', async () => {
+  const f = fixture(); await f.attach();
+  const { expires_at_ms: omitted, ...liveAsk } = ask;
+  assert.ok(omitted);
+  f.emit({ type: 'permission_ask', ...liveAsk }, { seq: 6 });
+  f.model.openApproval(ask.ask_id);
+  assert.equal(f.model.canApprove, true); assert.equal(f.model.approval.expires_at_ms, 0);
+  f.emit({ type: 'resync_required', epoch: 'new' });
+  f.emit(f.snapshot({ epoch: 'new', asks: [{ ...ask, expires_at_ms: 0 }] }));
+  assert.equal(f.model.approval.state, 'pending'); assert.equal(f.model.canApprove, true);
+  f.emit({ type: 'asks_resync', asks: [liveAsk] }, { seq: 7 });
+  assert.equal(f.model.approval.state, 'pending'); assert.equal(f.model.canApprove, true);
+  f.model.answerApproval(true);
+  const sent = f.connections[0].sent.at(-1);
+  assert.equal(sent.command.type, 'permission_reply'); assert.equal(sent.command.ask_id, ask.ask_id);
+  f.emit({ type: 'accepted' }, { id: sent.id });
+  assert.equal(f.model.approval.state, 'resolved');
+});
+
+test('invalid ask deadlines fail closed on events, snapshots and asks resync', async () => {
+  for (const expires_at_ms of [null, -1, 0.5, '0', Number.MAX_SAFE_INTEGER + 1]) {
+    for (const source of ['live', 'snapshot', 'resync']) {
+      const f = fixture(); await f.attach();
+      const invalid = { ...ask, expires_at_ms };
+      if (source === 'snapshot') {
+        f.emit({ type: 'resync_required', epoch: 'new' });
+        f.emit(f.snapshot({ epoch: 'new', asks: [invalid] }));
+      } else f.emit(source === 'live' ? { type: 'permission_ask', ...invalid } : { type: 'asks_resync', asks: [invalid] }, { seq: 6 });
+      assert.equal(f.model.phase, 'incompatible'); assert.equal(f.model.canApprove, false);
+    }
+  }
 });
 
 test('approval races, expiry, unknown outcomes and unavailable asks never replay', async () => {
@@ -165,7 +198,7 @@ function fixture(scope = 'control', supported) {
   const snapshot = (overrides = {}) => ({ type: 'snapshot', epoch: 'epoch', seq: 5, turn: 'idle', busy: false, queued: 0,
     history: [{ role: 'user', text: 'Earlier' }], asks: [], plan: [], ...overrides });
   async function attach(overrides = {}) {
-    await model.list(workspace.id); model.attach(first.id);
+    await model.loadProject(workspace.id); model.openProjectSession(workspace.id, first.id);
     emit({ type: 'attached', session_id: first.id, epoch: 'epoch', capabilities: ['acks', 'resume', 'commands'] });
     assert.equal(model.canControl, false);
     emit(snapshot(overrides));
@@ -182,9 +215,9 @@ function fixture(scope = 'control', supported) {
 
 test('existing sessions are explicitly selected through same-origin WSS and snapshot gates controls', async () => {
   const f = fixture();
-  await f.model.list(workspace.id);
+  await f.model.loadProject(workspace.id);
   assert.equal(f.connections.length, 0);
-  f.model.attach(first.id);
+  f.model.openProjectSession(workspace.id, first.id);
   assert.equal(f.model.canSubmit, false);
   assert.equal(f.connections[0].url, `${origin.replace('https:', 'wss:')}/api/socket?workspace=${workspace.id}&session=${first.id}`);
   f.emit({ type: 'attached', session_id: first.id, epoch: 'epoch', capabilities: ['acks', 'resume', 'commands'] });
@@ -319,18 +352,98 @@ test('switching session fences late socket events and replies and keeps drafts s
   assert.equal(f.model.draft, 'First draft');
 });
 
-test('late listings cannot overwrite the selected workspace and revoked listing removes access', async () => {
-  const f = fixture();
-  let finish;
+test('project browsing is on demand and does not replace the active session or its approval', async () => {
+  const f = fixture(); await f.attach({ asks: [ask] });
+  const other = { ...workspace, id: 'fedcba9876543210', label: workspace.label };
+  f.model.access('control', [workspace, other, { ...other, id: 'aaaaaaaaaaaaaaaa', online: false }]);
+  f.model.openApproval(ask.ask_id); f.model.setDraft('Project A draft');
+  const connection = f.model.connection, approval = f.model.approval;
+  let calls = 0;
+  f.model.fetch = async () => { calls++; return { ok: true, json: async () => ({ sessions: [first] }) }; };
+  assert.equal(calls, 0);
+  await f.model.loadProject('aaaaaaaaaaaaaaaa'); assert.equal(calls, 0);
+  await f.model.loadProject(other.id); assert.equal(calls, 1);
+  assert.equal(f.model.connection, connection); assert.equal(f.model.approval, approval);
+  assert.equal(f.model.canApprove, true); assert.equal(f.model.draft, 'Project A draft');
+  assert.equal(f.model.projectLabel(), `${workspace.label} · ${workspace.id}`);
+  assert.equal(f.model.projectLabel(other), `${other.label} · ${other.id}`);
+});
+
+test('switching projects with identical session ids isolates drafts, asks, Stop and stale socket replies', async () => {
+  const f = fixture(); await f.attach({ asks: [ask] });
+  const other = { ...workspace, id: 'fedcba9876543210' };
+  f.model.access('control', [workspace, other]);
+  await f.model.loadProject(workspace.id); await f.model.loadProject(other.id);
+  f.model.setDraft('Draft A'); f.model.openApproval(ask.ask_id);
+  f.model.submit('Draft A');
+  const old = f.model.connection;
+  const pendingId = old.sent.at(-1).id;
+  f.model.openProjectSession(other.id, first.id);
+  assert.equal(f.model.draft, ''); assert.equal(f.model.approval, null); assert.equal(f.model.canStop, false);
+  assert.equal(f.model.workspace.id, other.id); assert.equal(f.model.phase, 'connecting');
+  f.emit({ type: 'accepted' }, { id: pendingId }, old); old.onclose();
+  assert.equal(f.model.phase, 'connecting');
+  assert.match(f.model.outcomeIssue, /Outcome unknown/);
+  f.model.answerApproval(true); f.model.stop();
+  assert.deepEqual(f.model.connection.sent, []);
+  f.model.setDraft('Draft B'); f.model.openProjectSession(workspace.id, first.id);
+  assert.equal(f.model.draft, 'Draft A');
+  f.model.openProjectSession(other.id, first.id); assert.equal(f.model.draft, 'Draft B');
+});
+
+test('project reads fence refresh, removal and revocation including late response bodies', async () => {
+  for (const change of ['refresh', 'remove', 'revoke']) {
+    const f = fixture(); let finish;
+    f.model.fetch = async () => ({ ok: true, json: () => new Promise((resolve) => { finish = resolve; }) });
+    const read = f.model.loadProject(workspace.id);
+    await Promise.resolve();
+    if (change === 'revoke') f.model.revoke();
+    else f.model.access('control', change === 'remove' ? [] : [workspace]);
+    finish({ sessions: [first] }); await read;
+    assert.equal(f.model.projects.get(workspace.id)?.phase, change === 'refresh' ? 'idle' : undefined);
+    assert.equal(f.model.selected, null);
+  }
+});
+
+test('project listing suppresses duplicate in-flight reads and rejects malformed inventory', async () => {
+  const f = fixture(); let finish;
   f.model.fetch = () => new Promise((resolve) => { finish = resolve; });
-  const old = f.model.list(workspace.id);
-  f.model.access('control', [workspace, { ...workspace, id: 'fedcba9876543210', label: 'Project B' }]);
-  const finishOld = finish;
-  const current = f.model.list('fedcba9876543210');
-  finishOld({ ok: true, status: 200, json: async () => ({ sessions: [first] }) }); await old;
-  assert.equal(f.model.items.length, 0);
-  finish({ status: 401 }); await current;
-  assert.equal(f.model.phase, 'unpaired'); assert.equal(f.model.scope, null);
+  const read = f.model.loadProject(workspace.id);
+  await f.model.loadProject(workspace.id);
+  const resolve = finish;
+  resolve({ ok: true, json: async () => ({ sessions: [null] }) }); await read;
+  assert.equal(f.model.projects.get(workspace.id).phase, 'error');
+  assert.deepEqual(f.model.projects.get(workspace.id).items, []);
+  await f.model.loadProject('not-a-project');
+  assert.equal(f.model.connection, undefined);
+});
+
+test('project listing errors stay local, do not retry, and lock an unavailable active project', async () => {
+  for (const [status, phase] of [[429, 'throttled'], [503, 'offline'], [403, 'forbidden'], [500, 'error']]) {
+    const f = fixture(); await f.attach();
+    let reads = 0, probes = 0;
+    f.model.accessLost = () => probes++;
+    f.model.fetch = async () => { reads++; return { ok: false, status }; };
+    await f.model.loadProject(workspace.id);
+    assert.equal(reads, 1); assert.equal(f.model.projects.get(workspace.id).phase, phase);
+    assert.equal(f.model.authorized, true); assert.equal(probes, status === 403 ? 1 : 0);
+    assert.equal(f.model.canControl, status !== 403);
+  }
+  const f = fixture(); await f.attach();
+  f.model.fetch = async () => ({ status: 401 });
+  await f.model.loadProject(workspace.id);
+  assert.equal(f.model.authorized, false); assert.equal(f.model.projects.size, 0);
+});
+
+test('verified inventory refresh updates labels, locks removed/offline projects and preserves drafts', async () => {
+  const f = fixture(); await f.attach(); f.model.setDraft('Keep A');
+  f.model.access('control', [{ ...workspace, label: 'Renamed project' }]);
+  assert.equal(f.model.projectLabel(), `Renamed project · ${workspace.id}`); assert.equal(f.model.canControl, true);
+  f.model.access('control', [{ ...workspace, online: false }]);
+  assert.equal(f.model.canControl, false); assert.equal(f.model.draft, 'Keep A');
+  assert.equal(f.model.projects.get(workspace.id).phase, 'offline');
+  f.model.access('control', []);
+  assert.equal(f.model.canStop, false); assert.equal(f.model.draft, 'Keep A');
 });
 
 test('resync locks controls until a fresh snapshot and session closure remains terminal', async () => {

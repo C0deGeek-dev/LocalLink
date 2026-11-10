@@ -36,6 +36,7 @@ npm ci --ignore-scripts
 npm run check
 npx playwright install chromium
 npm run check:a11y
+npm run check:projects
 npm run verify:bundle
 ```
 
@@ -43,6 +44,7 @@ To use an already installed Edge instead of downloading Chromium:
 
 ```text
 npm run check:a11y -- --channel=msedge
+npm run check:projects -- --channel=msedge
 ```
 
 The browser check serves the built bundle through intercepted HTTPS routes in a
@@ -66,6 +68,16 @@ computed foreground/background contrast of at least 4.5:1 on code, approval deta
 and navigation. Screenshots were inspected for wrapping and readable surfaces.
 This is not a WCAG certification or proof of screen-reader behavior on Android.
 Set `LOCALLINK_A11Y_OUTPUT` to a local output directory to retain JSON and screenshots.
+
+The project-picker check adds multi-project fixtures with duplicate folder labels,
+full project IDs, empty/offline groups and local rate-limit recovery. It checks
+keyboard expansion, no automatic session fan-out/retry, browsing without socket
+replacement, A→B→A draft restoration with identical session IDs, action context,
+held responses across inventory removal, and failed inventory refresh locking
+controls. Ten additional axe/layout scans cover light/dark project groups and
+approval context, including doubled text. Set `LOCALLINK_PROJECTS_OUTPUT` to
+retain screenshots. These remain synthetic browser checks; real Android
+TalkBack and trusted-HTTPS acceptance are pending.
 
 ## Android TalkBack walkthrough — pending
 

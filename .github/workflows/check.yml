@@ -26,6 +26,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - if: runner.os == 'Linux'
         run: npm run check:a11y
+      - if: runner.os == 'Linux'
+        run: npm run check:projects
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: locallink-${{ github.sha }}-${{ matrix.os }}

@@ -14,7 +14,8 @@
     "check": "npm run lint && npm test && npm run build",
     "verify:bundle": "node scripts/verify-bundle.js dist",
     "preview": "node scripts/preview.js",
-    "check:a11y": "node scripts/check-accessibility.js"
+    "check:a11y": "node scripts/check-accessibility.js",
+    "check:projects": "node scripts/check-projects.js"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

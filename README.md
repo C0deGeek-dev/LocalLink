@@ -58,7 +58,19 @@ was revoked or a code has expired, been used, or been closed on the PC.
 
 ## Following a session
 
-After pairing, choose a project, then a shared terminal session. The phone
+After pairing, expand a project to load its shared terminal sessions, then choose
+a session. Projects come from the gateway; offline projects stay visible. Each
+project shows its ID so folders with the same name remain distinguishable.
+**Refresh projects** updates the inventory; **Refresh sessions** reads only that
+project. Browsing keeps your current session connected. Listing errors offer
+manual recovery; the client never retries a listing automatically.
+
+Switching sessions keeps separate drafts for each project/session in memory.
+Drafts do not survive reload or closing the app. The active project ID and session
+are shown beside Stop and approvals; browsing another project does not retarget
+these actions. Attention covers only the attached session.
+
+The phone
 follows the session already open on your PC; it cannot start a new session.
 Closing that terminal ends phone access to the session.
 
