@@ -13,10 +13,13 @@
     "lint": "eslint . --max-warnings 0",
     "check": "npm run lint && npm test && npm run build",
     "verify:bundle": "node scripts/verify-bundle.js dist",
-    "preview": "node scripts/preview.js"
+    "preview": "node scripts/preview.js",
+    "check:a11y": "node scripts/check-accessibility.js"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
-    "eslint": "9.39.5"
+    "axe-core": "4.14.0",
+    "eslint": "9.39.5",
+    "playwright": "1.65.0"
   }
 }

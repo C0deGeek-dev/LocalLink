@@ -25,10 +25,16 @@ npm run preview
 ```
 
 Open `http://127.0.0.1:4173`. This local preview has three destinations and
-system light/dark themes. Pairing requires the app to be served by your
+system light/dark themes with a manual choice under Devices → Appearance.
+Only the appearance choice is saved in browser storage; drafts and session
+state stay in memory. Pairing requires the app to be served by your
 LocalPilot gateway at its trusted HTTPS address; the HTTP preview cannot pair
 and does not proxy the gateway. The preview can cache its static shell; live
 sessions, approvals and notifications require the gateway.
+
+Accessibility verification and the Android TalkBack walkthrough are documented
+in [docs/accessibility.md](docs/accessibility.md). Automated checks use isolated
+browser fixtures and do not establish real-device acceptance.
 
 ## Pairing
 

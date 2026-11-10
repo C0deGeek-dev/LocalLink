@@ -2,6 +2,11 @@
 
 ## 0.1.0 — unreleased
 
+- Follow the system appearance with a saved Light/Dark override in Devices.
+  Improve contrast, large text, touch targets, keyboard and approval focus;
+  preserve conversation nodes during streaming and announce completed replies
+  without reading every token. Add automated browser accessibility checks.
+
 - Cache only the complete static shell for offline use; announce app updates
   without taking over open windows. Keep the last view and draft through
   reconnect, lock controls until fresh state arrives, and keep unknown mirrors
