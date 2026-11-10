@@ -136,7 +136,7 @@ export function mountSessions(document, window) {
     el('back-to-sessions').hidden = model.phase !== 'closed';
     el('pending-attention').hidden = !model.asks.length;
     setText('pending-attention', `${model.asks.length} request${model.asks.length === 1 ? '' : 's'} need attention. Open Attention to review.`);
-    setText('history-limit', model.truncated ? 'Only the most recent conversation text is available.' : '');
+    setText('history-limit', model.historyUnconfirmed ? 'Conversation may be incomplete. Waiting for a full snapshot from the PC.' : model.truncated ? 'Only the most recent conversation text is available.' : '');
     el('session-plan').hidden = !model.plan.length;
     const planStatus = { pending: 'Pending', in_progress: 'In progress', completed: 'Completed', done: 'Done', skipped: 'Skipped' };
     el('plan-steps').replaceChildren(...model.plan.map((step) => make('li', `${step.title} · ${planStatus[step.status] || 'Status unavailable'}`)));

@@ -24,7 +24,21 @@ test('healthy unknown mirror stays attached beyond the deadline and later author
     if (recovery === 'snapshot') f.emit(f.snapshot({ epoch: 'next', history: [{ role: 'user', text: 'Caught up' }] }));
     else f.emit({ type: recovery }, { seq: 6 });
     assert.equal(f.model.ready, true); assert.equal(f.model.canControl, true);
+    assert.equal(f.model.viewStale, recovery !== 'snapshot');
   }
+});
+
+test('unknown snapshot retains authoritative pending asks read-only instead of hiding a blocked PC request', async () => {
+  const f = fixture(); await f.attach({ turn: 'unknown', history: [], asks: [ask] });
+  assert.deepEqual(f.model.asks, [ask]);
+  f.model.openApproval(ask.ask_id);
+  assert.equal(f.model.approval.ask_id, ask.ask_id);
+  assert.equal(f.model.canApprove, false);
+  f.model.answerApproval(true);
+  assert.deepEqual(f.connections[0].sent, []);
+  f.emit({ type: 'stopped' }, { seq: 6 });
+  assert.equal(f.model.canApprove, true);
+  assert.equal(f.model.viewStale, true);
 });
 
 test('reconnect retains the old view but replaces cursor, asks and admission before controls unlock', async () => {

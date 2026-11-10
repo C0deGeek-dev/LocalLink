@@ -43,6 +43,8 @@ export class Sessions {
     this.truncated = false;
     this.viewStale = false;
     this.baselineReceived = false;
+    this.historyUnconfirmed = false;
+    this.unknownAsksConfirmed = false;
     this.compatibility = null;
     this.serverVersion = null;
   }
@@ -136,6 +138,7 @@ export class Sessions {
     else {
       this.viewStale = true;
       this.baselineReceived = false;
+      this.historyUnconfirmed = true;
       this.capabilities = [];
       this.commands = [];
       this.catalogueId = null;
@@ -206,11 +209,16 @@ export class Sessions {
       this.queued = event.queued;
       if (event.turn === 'unknown') {
         this.viewStale = true;
+        this.historyUnconfirmed = !event.history.length;
         if (event.history.length) this.history = event.history;
+        // Empty mirror rebuilds cannot prove a previously shown ask vanished.
+        this.unknownAsksConfirmed = event.asks.length > 0;
+        if (this.unknownAsksConfirmed) { this.asks = event.asks; this.reconcileApproval(); }
         this.unschedule(this.attachTimer);
         this.emit(); return;
       }
       this.viewStale = false;
+      this.historyUnconfirmed = false;
       this.clearActionNotice();
       this.history = event.history;
       this.entries = event.turn === 'running' && event.turn_text ? [{ type: 'assistant', text: event.turn_text }] : [];
@@ -241,9 +249,11 @@ export class Sessions {
       // Intentional feed filtering leaves gaps; a numeric gap alone is not loss.
       this.seq = record.seq;
       if (this.phase === 'syncing') {
-        this.phase = 'ready'; this.viewStale = false; this.unschedule(this.attachTimer);
-        // An unknown baseline cannot authorise its old permission asks.
-        this.asks = []; this.reconcileApproval();
+        this.phase = 'ready'; this.viewStale = this.historyUnconfirmed; this.unschedule(this.attachTimer);
+        // A non-empty baseline carries actual registry asks; an empty mirror
+        // cannot authorise stale asks retained from before its interruption.
+        if (!this.unknownAsksConfirmed) this.asks = [];
+        this.reconcileApproval();
       }
       this.project(event);
       if (this.ready && this.capabilities.includes('commands') && !this.catalogueId) this.readCommands();
