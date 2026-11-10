@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { protocol } from '../src/compatibility.js';
 
 export const contentTypes = Object.freeze({
   html: 'text/html; charset=utf-8',
@@ -44,13 +45,19 @@ export async function buildBundle({ root, out, revision, dirty }) {
       payload.set(path, Buffer.from(bytes.toString('utf8').replaceAll('__ASSET_DIGEST__', digest)));
     } else payload.set(`assets/${digest}/${path}`, bytes);
   }
+  // The worker does not cache itself. Its exact-byte list pins one full shell.
+  const shell = [...payload].filter(([path]) => path !== 'push-worker.js').map(([path, bytes]) => ({
+    url: `/${path}`, integrity: `sha256-${createHash('sha256').update(bytes).digest('base64')}`,
+  }));
+  payload.set('push-worker.js', Buffer.from(payload.get('push-worker.js').toString('utf8')
+    .replace('__SHELL_GENERATION__', digest).replace('/* __SHELL_FILES__ */ []', JSON.stringify(shell))));
   const files = [...payload].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([path, bytes]) => ({
     path, sha256: sha256(bytes), bytes: bytes.length, content_type: contentTypes[path.split('.').at(-1)],
   }));
   const manifest = {
     schema_version: 1, version, source_revision: revision, source_dirty: dirty,
     client_status: 'sessions',
-    protocol: { min: 1, max: 1, required_capabilities: ['acks', 'resume', 'retry', 'commands'] },
+    protocol,
     files,
   };
   // Caller supplies a fresh directory, so stale assets cannot enter the bundle.

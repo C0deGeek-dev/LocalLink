@@ -5,8 +5,8 @@ third-party runtime loads. This version supports pairing by camera QR scan or
 manual entry and snapshot-first shared-session attachment with acknowledged
 input, Stop, typed slash commands and acknowledged phone approvals. Attention
 covers requests in the attached shared session. Devices shows this phone and
-can revoke its access. Push has explicit opt-in, test and off controls; offline
-caching is not implemented.
+can revoke its access. Push has explicit opt-in, test and off controls. Offline
+caching holds the static app shell only; session data stays in the live window.
 
 ## Build and identity
 
@@ -32,7 +32,7 @@ dependencies. Neither tool enters the browser bundle.
 | `source_dirty` | Whether tracked or untracked source changes existed |
 | `client_status` | `sessions`; shared-session viewing and acknowledged controls |
 | `protocol.min`, `protocol.max` | Inclusive RPC version range, currently `1` |
-| `protocol.required_capabilities` | `acks`, `resume`, `retry`, `commands` |
+| `protocol.required_capabilities` | `acks`, `resume`; `commands` is optional, mutation retry is unused |
 | `files` | Sorted array of `{path, sha256, bytes, content_type}` for every served file |
 
 Paths are relative, use `/`, and contain no traversal or leading slash. SHA-256
@@ -65,11 +65,22 @@ CSP; no inline script or style, remote font, CDN or telemetry is needed.
 
 Replace the complete pinned tree atomically when upgrading or rolling back.
 `/push-worker.js` is a stable root URL, listed and verified in the bundle, served
-with `Cache-Control: no-cache`. It registers with scope `/` only after explicit
-notification enablement. It handles push and notification clicks only; no fetch
-handler, cache, forced activation or offline mutations. Offline caching and safe update prompts
-must arrive with reconciliation and draft protection; do not add unconditional
-`skipWaiting`, cached API responses or an offline mutation queue.
+with `Cache-Control: no-cache`. It registers with scope `/` for the offline shell,
+independently of notification permission. A build-injected, integrity-checked list
+contains only the complete generation's HTML, manifest and content-addressed assets.
+Failed install leaves the old worker intact. The fetch handler serves the pinned
+shell for same-origin root document navigation and exact listed assets only;
+API/auth/pairing/session responses, worker downloads, non-document HTML fetches,
+query URLs and mutations pass through without interception. No dynamic cache writes.
+
+The waiting update is announced without reload, `skipWaiting` or `clients.claim`.
+Finish or copy drafts, close every LocalLink browser tab and close the installed
+app from Android recent apps, then reopen. Background clients can delay activation;
+an incompatible old shell may need these steps before it can control the PC again.
+Drafts remain safe in the existing window but are not persisted across closing or
+reload. Natural activation deletes only old `locallink-shell-` caches after old
+controlled windows close. Other applications' caches are untouched. A missing cached
+asset fails closed rather than loading bytes from a different generation.
 
 ## Browser/server boundary
 
@@ -120,10 +131,18 @@ The gateway sends `attached` and `snapshot`; the client sends no `attach`,
 RPC records use `{v: 1, id, command: {type, ...}}`; replies are
 `{v: 1, id?, seq?, event: {type, ...}}`. Matching session identity, epoch,
 `acks` and `resume` capabilities plus a snapshot are required before controls.
+Product `server_version` is diagnostic: RPC version and advertised capabilities
+decide compatibility. A newer wire version asks the user to reopen/update the app;
+an older wire version or missing required capability asks them to update LocalPilot
+on the PC. Compatible product releases and unknown additive capabilities work.
 The verified snapshot owns its epoch: a newer mirror install can overtake the
 resync notice that prompted it. Temporary unknown/empty boundary snapshots
 leave the previous transcript visible as stale, with controls locked, until
-a usable snapshot arrives. Idle snapshot `turn_text` is omitted from the view
+a usable snapshot or authoritative turn boundary arrives. A healthy unknown mirror
+stays attached beyond the initial 15-second transport deadline, with manual
+Reconnect available. The PC's own lost turn state can stay unknown until its next
+turn. Server-to-source snapshot recovery is a separately owned server change.
+Idle snapshot `turn_text` is omitted from the view
 because it repeats the completed assistant message in stored history.
 The `commands` capability enables a catalogue request and typed
 `run_command {name, args}`. Device input supports `immediate` and `follow_up`;
@@ -132,6 +151,13 @@ replies correlate by ID. Only snapshot/live feed events change turn status;
 reply delivery can race the feed. Sequence gaps alone are legal due to filtering.
 Resync locks controls until a new snapshot; disconnects require manual fresh
 attachment. No mutation is retried, including after a timeout or lost reply.
+Reconnect deliberately sends no cursor: a same-epoch cursor gets replay without
+a completion marker from the current gateway. A complete snapshot reconciles
+history, epoch, cursor, asks and admission before controls unlock. Reconnecting
+to the same session retains the previous transcript and last-sync time as stale.
+Closed shared terminals offer Back to sessions; resume the same history or start
+a new session on the PC, then share it. The phone cannot create or resume a closed
+terminal on its own.
 
 The snapshot contains transcript text, not historical tool groups. Local tool
 activity is explicitly for the turn in progress. Phone input is echoed

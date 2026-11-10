@@ -27,8 +27,8 @@ npm run preview
 Open `http://127.0.0.1:4173`. This local preview has three destinations and
 system light/dark themes. Pairing requires the app to be served by your
 LocalPilot gateway at its trusted HTTPS address; the HTTP preview cannot pair
-and does not proxy the gateway. Answering requests, notifications and offline
-caching are still being built.
+and does not proxy the gateway. The preview can cache its static shell; live
+sessions, approvals and notifications require the gateway.
 
 ## Pairing
 
@@ -66,8 +66,8 @@ Control access offers **Send** when idle, **Follow up** while working, and a
 separate **Stop turn** labelled with its project. Device steering is unavailable.
 **Slash commands** comes from the PC's advertised catalogue. Commands use a
 typed route; unknown slash text is refused and never sent as a model prompt.
-While working, only `/effort` is available from the picker. Requests needing
-approval must currently be answered on the PC.
+While working, only `/effort` is available from the picker. Open Attention to
+review requests and answer them after the PC confirms the current session state.
 
 Controls stay locked until a compatible attachment and snapshot arrive, and
 when scope or turn state is unknown. Observe access can only view. A lost
@@ -76,6 +76,17 @@ last-sync time. **Reconnect** fetches a new snapshot; it never resends input.
 If a mutation reply is lost, its outcome is explicitly unknown: check the PC
 before sending again. Drafts are held in memory per session, and disappear on
 reload or when access is revoked. There is no offline queue or automatic retry.
+
+The app shell works offline after it has been installed successfully by the
+browser. It never stores pairing, authentication or session responses. An offline
+reload opens the shell; reconnect to the PC to retrieve session data. If the PC
+reports unknown turn state, the phone stays attached with controls locked and the
+previous view dimmed until authoritative state arrives.
+
+Updates are announced without interrupting drafts or approvals. Finish or copy
+your drafts, close every LocalLink browser tab and close LocalLink from Android
+recent apps, then reopen. Drafts are not saved after closing or reloading. A
+protocol mismatch explains whether to update the app or LocalPilot on the PC.
 
 The gateway must report device scope in `GET /api/workspaces` (LocalPilot
 `ea8b041` or later). Older gateways can pair, but returning phones without a

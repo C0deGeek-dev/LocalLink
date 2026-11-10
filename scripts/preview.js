@@ -20,7 +20,7 @@ createServer(async (request, response) => {
       'Content-Type': file.content_type,
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
-      'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; manifest-src 'self'; base-uri 'none'; frame-ancestors 'none'",
+      'Content-Security-Policy': "default-src 'none'; script-src 'self'; worker-src 'self'; connect-src 'self'; style-src 'self'; img-src 'self'; manifest-src 'self'; base-uri 'none'; frame-ancestors 'none'",
     }).end(request.method === 'HEAD' ? undefined : bytes);
   } catch {
     response.writeHead(500).end('Rebuild the preview');

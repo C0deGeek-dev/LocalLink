@@ -2,6 +2,11 @@
 
 ## 0.1.0 — unreleased
 
+- Cache only the complete static shell for offline use; announce app updates
+  without taking over open windows. Keep the last view and draft through
+  reconnect, lock controls until fresh state arrives, and keep unknown mirrors
+  attached. Explain incompatible client/server protocols before any action.
+
 - Add a phone-sized preview shell with Sessions, Attention and Devices navigation
   and system light/dark themes.
 - Add a deterministic, revision-labelled bundle with per-file integrity metadata,

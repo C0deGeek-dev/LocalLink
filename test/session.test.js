@@ -8,6 +8,72 @@ const first = { id: '11111111-1111-4111-8111-111111111111', name: 'First', live:
 const second = { id: '22222222-2222-4222-8222-222222222222', name: 'Second', live: true };
 const ask = { ask_id: 'ask-1', tool: 'shell', detail: 'echo hello', risk: 'Run a command', expires_at_ms: 99999999 };
 
+test('healthy unknown mirror stays attached beyond the deadline and later authoritative state recovers', async () => {
+  for (const recovery of ['snapshot', 'turn_started', 'stopped']) {
+    const f = fixture(); await f.attach();
+    f.model.setDraft('Keep this');
+    const history = f.model.history, synced = f.model.synced;
+    f.emit({ type: 'resync_required', epoch: 'next' });
+    const deadline = [...f.timers.values()].at(-1);
+    f.emit(f.snapshot({ epoch: 'next', turn: 'unknown', history: [] }));
+    deadline();
+    assert.equal(f.model.phase, 'syncing'); assert.equal(f.model.canControl, false);
+    assert.equal(f.model.connection, f.connections[0]);
+    assert.equal(f.model.history, history); assert.equal(f.model.synced, synced);
+    assert.equal(f.model.draft, 'Keep this');
+    if (recovery === 'snapshot') f.emit(f.snapshot({ epoch: 'next', history: [{ role: 'user', text: 'Caught up' }] }));
+    else f.emit({ type: recovery }, { seq: 6 });
+    assert.equal(f.model.ready, true); assert.equal(f.model.canControl, true);
+  }
+});
+
+test('reconnect retains the old view but replaces cursor, asks and admission before controls unlock', async () => {
+  const f = fixture(); await f.attach({ asks: [ask] });
+  f.model.setDraft('Unsent draft'); f.model.openApproval(ask.ask_id);
+  f.model.submit('Unsent draft'); f.connections[0].onclose();
+  const before = f.model.synced;
+  f.model.attach(first.id);
+  assert.equal(f.model.history[0].text, 'Earlier'); assert.equal(f.model.synced, before);
+  assert.equal(f.model.canControl, false); assert.equal(f.model.canApprove, false);
+  assert.equal(f.model.viewStale, true); assert.equal(f.model.draft, 'Unsent draft');
+  assert.match(f.model.outcomeIssue, /Outcome unknown/);
+  const url = new URL(f.connections[1].url);
+  assert.equal(url.searchParams.has('epoch'), false); assert.equal(url.searchParams.has('seq'), false);
+  f.emit({ type: 'attached', session_id: first.id, epoch: 'new', capabilities: ['acks', 'resume'] });
+  assert.equal(f.model.canControl, false);
+  f.emit(f.snapshot({ epoch: 'new', seq: 1, asks: [], history: [{ role: 'assistant', text: 'After reconnect' }] }));
+  assert.equal(f.model.canControl, true); assert.equal(f.model.canApprove, false);
+  assert.equal(f.model.approval.state, 'unavailable'); assert.equal(f.model.seq, 1);
+  assert.equal(f.model.history[0].text, 'After reconnect');
+  assert.deepEqual(f.connections[1].sent, []); // no replay; no optional catalogue
+});
+
+test('old installed client/new server and new client/old server refuse before any action', async () => {
+  for (const [supported, serverWire, issue] of [
+    [{ min: 1, max: 1, required_capabilities: ['acks', 'resume'] }, 2, 'new-server'],
+    [{ min: 2, max: 2, required_capabilities: ['acks', 'resume'] }, 1, 'old-server'],
+  ]) {
+    const f = fixture('control', supported);
+    await f.model.list(workspace.id); f.model.attach(first.id);
+    f.connections[0].onmessage({ data: JSON.stringify({ v: serverWire, event: { type: 'attached', session_id: first.id,
+      server_version: serverWire === 1 ? '0.1.0' : '2.0.0', epoch: 'epoch', capabilities: ['acks', 'resume', 'commands'] } }) });
+    f.model.submit('must not run'); f.model.stop();
+    assert.equal(f.model.phase, 'incompatible'); assert.equal(f.model.compatibility, issue);
+    assert.deepEqual(f.connections[0].sent, []);
+  }
+  const f = fixture(); await f.model.list(workspace.id); f.model.attach(first.id);
+  f.emit({ type: 'attached', session_id: first.id, epoch: 'epoch', server_version: '0.0.1', capabilities: ['acks'] });
+  assert.equal(f.model.compatibility, 'old-server'); assert.deepEqual(f.connections[0].sent, []);
+});
+
+test('compatible newer product release and additive capabilities retain the wire contract', async () => {
+  const f = fixture(); await f.model.list(workspace.id); f.model.attach(first.id);
+  f.emit({ type: 'attached', session_id: first.id, epoch: 'epoch', server_version: '99.0.0', capabilities: ['acks', 'resume', 'future'] });
+  f.emit(f.snapshot());
+  assert.equal(f.model.canControl, true); assert.equal(f.model.serverVersion, '99.0.0');
+  assert.deepEqual(f.connections[0].sent, []);
+});
+
 test('approval waits for correlated ack, prevents double taps and handles resolution-before-ack', async () => {
   const f = fixture(); await f.attach({ asks: [ask] });
   f.model.openApproval(ask.ask_id); f.model.answerApproval(true); f.model.answerApproval(false);
@@ -67,11 +133,11 @@ test('approval ack before feed remains resolved and unknown refusal stays disclo
   assert.match(f.model.outcomeIssue, /Approval outcome unknown/);
   f.model.attach(first.id); assert.match(f.model.outcomeIssue, /Approval outcome unknown/);
 });
-function fixture(scope = 'control') {
+function fixture(scope = 'control', supported) {
   const connections = [], timers = new Map(), requests = [];
   let clock = 0;
   const model = new Sessions({
-    origin, changed() {}, now: () => ++clock,
+    origin, supported, changed() {}, now: () => ++clock,
     schedule(fn) { const key = ++clock; timers.set(key, fn); return key; },
     unschedule(key) { timers.delete(key); },
     fetch: async (...args) => { requests.push(args); return { ok: true, status: 200, json: async () => ({ sessions: [first, second] }) }; },

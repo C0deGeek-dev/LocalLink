@@ -14,7 +14,7 @@ test('push uses generic copy; notification opens only refetch, never execute or 
     clients: { async matchAll() { return existing ? [client] : []; }, async openWindow(url) { calls.push(url); } },
   };
   runInNewContext(await readFile(new URL('../src/push-worker.js', import.meta.url), 'utf8'), { self, URL });
-  assert.deepEqual(Object.keys(listeners).sort(), ['notificationclick', 'push']);
+  assert.deepEqual(Object.keys(listeners).sort(), ['activate', 'fetch', 'install', 'notificationclick', 'push']);
   let pending;
   listeners.push({ data: { json() { throw new Error('must not use private payload'); } }, waitUntil(promise) { pending = promise; } });
   await pending; assert.deepEqual(calls.pop(), ['LocalLink', 'There is an update on your PC. Open LocalLink to check.']);
