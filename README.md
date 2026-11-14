@@ -26,7 +26,8 @@ npm run preview
 
 Open `http://127.0.0.1:4173`. This local preview has three destinations and
 system light/dark themes with a manual choice under Devices → Appearance.
-Only the appearance choice is saved in browser storage; drafts and session
+On tablet and desktop, projects and the conversation sit side by side. On smaller
+screens, the project picker collapses above the chat. Only the appearance choice is saved in browser storage; drafts and session
 state stay in memory. Pairing requires the app to be served by your
 LocalPilot gateway at its trusted HTTPS address; the HTTP preview cannot pair
 and does not proxy the gateway. The preview can cache its static shell; live
@@ -78,7 +79,18 @@ The conversation shows stored text and live assistant output. Expand **Tool
 activity** for tools received live during the turn in progress, or **Session
 plan** for the current plan. Past tool activity is unavailable. Messages typed
 on the PC appear when the next snapshot arrives; messages sent from
-this phone are labelled locally after the PC acknowledges them.
+this device appear immediately with a Sending status. The status changes only when
+the PC acknowledges receipt or queues a follow-up. Rejected or unconfirmed sends
+stay visible with a clear status; their drafts are retained and never resent
+automatically.
+
+Opening a session scrolls to its latest message. Live output follows while you are
+at the bottom; scrolling back pauses following and offers **Latest messages**.
+Loading placeholders distinguish a pending session list or first snapshot from an
+empty conversation. A visible activity indicator distinguishes sending, waiting for
+LocalPilot, working, responding, tools and approval requests. These indicators do
+not change the PC's authoritative turn state. On a keyboard, Enter sends and
+Shift+Enter adds a line; touch keyboards keep Enter for new lines.
 
 Control access offers **Send** when idle, **Follow up** while working, and a
 separate **Stop turn** labelled with its project. Device steering is unavailable.
@@ -101,7 +113,7 @@ reload opens the shell; reconnect to the PC to retrieve session data. If the PC
 reports unknown turn state, the phone stays attached with controls locked and the
 previous view dimmed until authoritative state arrives.
 
-Updates are announced without interrupting drafts or approvals. Finish or copy
+Updates are announced under **App status** without interrupting drafts or approvals. Finish or copy
 your drafts, close every LocalLink browser tab and close LocalLink from Android
 recent apps, then reopen. Drafts are not saved after closing or reloading. A
 protocol mismatch explains whether to update the app or LocalPilot on the PC.

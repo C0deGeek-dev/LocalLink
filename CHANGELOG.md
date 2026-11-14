@@ -2,6 +2,14 @@
 
 ## 0.1.0 — unreleased
 
+- Add a tablet/desktop project sidebar, an independently scrolling conversation
+  and an always-reachable composer. Open sessions at their latest message,
+  follow live output without interrupting a reader scrolling back, and offer a
+  Latest messages action. Show loading placeholders, immediate message delivery
+  feedback and visible sending/thinking/response/tool/approval states. Keep
+  rejected or uncertain messages and drafts without retrying. Add responsive
+  browser checks and delivery-race regression tests.
+
 - Follow the system appearance with a saved Light/Dark override in Devices.
   Improve contrast, large text, touch targets, keyboard and approval focus;
   preserve conversation nodes during streaming and announce completed replies

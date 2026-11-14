@@ -9,8 +9,13 @@ override and responds to system changes while the app is open.
 Controls have at least 48 × 48 CSS pixel targets. Text uses scalable units;
 conversation prose wraps, while code and tool output scroll independently and
 can receive keyboard focus. Status uses words as well as styling. Reduced-motion
-preferences disable animations, transitions and smooth scrolling. At narrow widths
-the composer and navigation remain in normal document flow to avoid covering text.
+preferences disable animations, transitions and smooth scrolling. The composer and navigation stay outside the independently scrolling conversation
+so they never cover messages. Tablet/desktop layouts keep the project browser
+alongside the conversation; smaller screens use a collapsible picker. Opening a
+session moves to the newest message without moving keyboard focus into the
+transcript. Scrolling back pauses following until Latest messages is chosen.
+Loading skeletons and activity dots are decorative; their adjacent text states
+what is loading or happening, and reduced motion disables their animation.
 
 Keyboard navigation includes Skip to content, destination heading focus, native
 disclosure controls and an approval dialog. Opening an approval focuses the request
@@ -37,6 +42,7 @@ npm run check
 npx playwright install chromium
 npm run check:a11y
 npm run check:projects
+npm run check:conversation
 npm run verify:bundle
 ```
 
@@ -78,6 +84,14 @@ controls. Ten additional axe/layout scans cover light/dark project groups and
 approval context, including doubled text. Set `LOCALLINK_PROJECTS_OUTPUT` to
 retain screenshots. These remain synthetic browser checks; real Android
 TalkBack and trusted-HTTPS acceptance are pending.
+
+The conversation check covers 320, 390, 820, 1024 and 1440 CSS pixels in light and
+dark themes. It delays listing, snapshot and acknowledgement independently; checks
+loading placeholders, first-snapshot scrolling, the visible composer, immediate
+message feedback, thinking/response/approval states, manual scroll preservation,
+returning to the latest message and rejected input retaining its draft. Set
+`LOCALLINK_CONVERSATION_OUTPUT` to retain screenshots. It uses synthetic gateway
+fixtures and does not establish real-device or live-model acceptance.
 
 ## Android TalkBack walkthrough — pending
 

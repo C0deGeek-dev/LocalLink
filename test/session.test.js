@@ -506,3 +506,54 @@ test('authoritative completion clears stale action notices but preserves unknown
   assert.match(f.model.outcomeIssue, /Outcome unknown/);
   assert.equal(f.model.notice, 'A separate warning');
 });
+
+test('a prompt is visible before acknowledgement and stays before a reply that beats its acknowledgement', async () => {
+  const f = fixture(); await f.attach();
+  f.model.setDraft('Show this immediately'); f.model.submit(f.model.draft);
+  const id = f.connections[0].sent.at(-1).id;
+  const entry = f.model.entries.at(-1);
+  assert.equal(entry.text, 'Show this immediately'); assert.equal(entry.delivery, 'sending');
+  assert.equal(f.model.busy, false, 'local delivery feedback must not claim the PC started a turn');
+  assert.equal(f.model.awaitingReply, true); assert.equal(f.model.canSubmit, false);
+  f.emit({ type: 'turn_started' }, { seq: 6 });
+  f.emit({ type: 'text_delta', text: 'A response' }, { seq: 7 });
+  f.emit({ type: 'accepted' }, { id });
+  assert.equal(f.model.entries[0], entry);
+  assert.equal(entry.delivery, 'accepted');
+  assert.equal(f.model.entries[1].text, 'A response');
+  assert.equal(f.model.draft, ''); assert.equal(f.model.awaitingReply, false);
+  assert.equal(f.model.entries.filter((item) => item.type === 'user').length, 1);
+});
+
+test('rejected and ambiguous deliveries remain visible with an honest status and keep their draft', async () => {
+  for (const code of ['refused', 'outcome_unknown']) {
+    const f = fixture(); await f.attach();
+    f.model.setDraft('Keep this'); f.model.submit(f.model.draft);
+    f.emit({ type: 'rejected', code, message: 'Not confirmed' }, { id: f.connections[0].sent.at(-1).id });
+    assert.equal(f.model.entries.at(-1).delivery, code === 'refused' ? 'rejected' : 'unknown');
+    assert.equal(f.model.draft, 'Keep this'); assert.equal(f.model.awaitingReply, false);
+    assert.equal(f.connections[0].sent.filter((record) => record.command.type === 'prompt').length, 1, 'never retry a mutation');
+  }
+  const f = fixture(); await f.attach();
+  f.model.setDraft('Connection lost'); f.model.submit(f.model.draft); f.connections[0].onclose();
+  assert.equal(f.model.entries.at(-1).delivery, 'unknown'); assert.equal(f.model.draft, 'Connection lost');
+  f.model.attach(first.id);
+  f.emit({ type: 'attached', session_id: first.id, epoch: 'new', capabilities: ['acks', 'resume'] });
+  f.emit(f.snapshot({ epoch: 'new' }));
+  assert.equal(f.model.entries.at(-1).delivery, 'unknown', 'fresh history cannot prove a lost acknowledgement');
+  assert.equal(f.connections[1].sent.length, 0, 'reconnect never resends');
+});
+
+test('queued input has immediate feedback without changing the authoritative turn and late acks do not revive thinking', async () => {
+  const f = fixture(); await f.attach({ turn: 'running', busy: true });
+  f.model.setDraft('Next task'); f.model.submit(f.model.draft);
+  const entry = f.model.entries.at(-1);
+  assert.equal(entry.delivery, 'sending'); assert.equal(entry.queued, true);
+  f.emit({ type: 'stopped', reason: 'complete' }, { seq: 6 });
+  f.emit({ type: 'queued' }, { id: f.connections[0].sent.at(-1).id });
+  assert.equal(entry.delivery, 'queued'); assert.equal(f.model.busy, false); assert.equal(f.model.awaitingReply, false);
+  f.model.setDraft('Another task'); f.model.submit(f.model.draft);
+  f.emit({ type: 'turn_started' }, { seq: 7 }); f.emit({ type: 'stopped', reason: 'complete' }, { seq: 8 });
+  f.emit({ type: 'accepted' }, { id: f.connections[0].sent.at(-1).id });
+  assert.equal(f.model.awaitingReply, false);
+});

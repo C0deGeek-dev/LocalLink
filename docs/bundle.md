@@ -160,8 +160,9 @@ a new session on the PC, then share it. The phone cannot create or resume a clos
 terminal on its own.
 
 The snapshot contains transcript text, not historical tool groups. Local tool
-activity is explicitly for the turn in progress. Phone input is echoed
-after acknowledgement; input typed on the PC is available after another
+activity is explicitly for the turn in progress. Device input is echoed immediately as Sending, then labelled received or queued
+only after acknowledgement; rejected and unknown outcomes retain the draft and
+are never retried. Only PC events change the actual turn state; input typed on the PC is available after another
 snapshot. Drafts are in-memory and per-session; API responses are never cached.
 
 Camera access is user-initiated, QR support is feature-detected with
