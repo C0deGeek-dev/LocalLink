@@ -585,3 +585,46 @@ test('a completed /name or /rename reads the listing back for the new name', asy
   await nextTurn();
   assert.equal(f.model.selected.name, 'After rename');
 });
+
+test('a snapshot during the turn keeps an accepted message the PC has not put in its history yet', async () => {
+  const f = fixture(); await f.attach({ history: [{ role: 'user', text: '111' }, { role: 'user', text: 'Hoi' }] });
+  f.model.submit('Sup');
+  const sent = f.connections[0].sent.find((record) => record.command.type === 'prompt');
+  f.emit({ type: 'accepted' }, { id: sent.id });
+  f.emit({ type: 'turn_started' }, { seq: 6 });
+  // The view resyncs mid-turn: the PC's history still ends before this turn.
+  f.emit({ type: 'resync_required', epoch: 'next' });
+  f.emit(f.snapshot({ epoch: 'next', seq: 7, turn: 'running', busy: true, turn_text: 'Hel',
+    history: [{ role: 'user', text: '111' }, { role: 'user', text: 'Hoi' }] }));
+  const shown = () => f.model.entries.map((entry) => [entry.type, entry.text]);
+  assert.deepEqual(shown(), [['user', 'Sup'], ['assistant', 'Hel']]);
+  assert.equal(f.model.entries[0].delivery, 'accepted');
+  // Once the PC's history holds it, the local copy goes: shown once.
+  f.emit({ type: 'resync_required', epoch: 'later' });
+  f.emit(f.snapshot({ epoch: 'later', seq: 9, history: [{ role: 'user', text: '111' }, { role: 'user', text: 'Hoi' },
+    { role: 'user', text: 'Sup' }, { role: 'assistant', text: 'Hello' }] }));
+  assert.deepEqual(shown(), []);
+});
+
+test('a queued follow-up survives a snapshot after the running turn, and an identical earlier message does not hide it', async () => {
+  const f = fixture(); await f.attach({ history: [{ role: 'user', text: 'ok' }, { role: 'assistant', text: 'Done' }] });
+  f.emit({ type: 'turn_started' }, { seq: 6 });
+  f.model.submit('ok');
+  const sent = f.connections[0].sent.find((record) => record.command.type === 'prompt');
+  f.emit({ type: 'queued', disposition: 'follow_up' }, { id: sent.id });
+  f.emit({ type: 'resync_required', epoch: 'next' });
+  f.emit(f.snapshot({ epoch: 'next', seq: 7, turn: 'running', busy: true, queued: 1, turn_text: 'Working',
+    history: [{ role: 'user', text: 'ok' }, { role: 'assistant', text: 'Done' }] }));
+  assert.deepEqual(f.model.entries.map((entry) => [entry.type, entry.text, entry.delivery]),
+    [['assistant', 'Working', undefined], ['user', 'ok', 'queued']]);
+});
+
+test('a truncated history that holds the accepted message shows it once', async () => {
+  const f = fixture(); await f.attach({ history: [{ role: 'user', text: 'a' }, { role: 'user', text: 'b' }, { role: 'user', text: 'c' }] });
+  f.model.submit('Sup');
+  const sent = f.connections[0].sent.find((record) => record.command.type === 'prompt');
+  f.emit({ type: 'accepted' }, { id: sent.id });
+  f.emit({ type: 'resync_required', epoch: 'next' });
+  f.emit(f.snapshot({ epoch: 'next', seq: 7, history_truncated: true, history: [{ role: 'user', text: 'Sup' }, { role: 'assistant', text: 'Hi' }] }));
+  assert.deepEqual(f.model.entries, []);
+});

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4 — unreleased
+
+- A message you sent stays in view while your PC works on it. The PC
+  resynchronises connected devices when a turn starts, before its history holds
+  the new message; an accepted or queued message is now kept until the PC's
+  history has it, and shown once. LocalHub#285.
+
 ## 0.1.3 — unreleased
 
 - Ctrl+Enter (Cmd+Enter on a Mac) sends from any device, also with a touch
