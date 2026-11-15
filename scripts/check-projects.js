@@ -87,7 +87,7 @@ try {
     await group(a).locator('.session-choice').click();
     await page.locator('#session-state').getByText('Working', { exact: true }).waitFor();
     await page.locator('#session-draft').fill('Draft for A');
-    await page.locator('#session-browser-title').click();
+    await page.locator('#open-sessions').click();
     await group(b).locator('summary').click(); await group(b).locator('.session-choice').waitFor();
     assert.equal(sockets.length, 1); assert.equal(sockets[0].closed, false);
     assert.equal(await page.locator('#session-draft').inputValue(), 'Draft for A');
@@ -110,12 +110,12 @@ try {
     await scan('approval-project-large-text');
     await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
     await page.locator('#close-approval').click();
-    await page.locator('[data-destination="sessions"]').click(); await page.locator('#session-browser-title').click();
+    await page.locator('[data-destination="sessions"]').click(); await page.locator('#open-sessions').click();
     await group(a).locator('.session-choice').click();
     await page.locator('#session-state').getByText('Working', { exact: true }).waitFor();
     assert.equal(await page.locator('#session-draft').inputValue(), 'Draft for A');
     assert.match(await page.locator('#stop-project').textContent(), new RegExp(a));
-    await page.locator('#session-browser-title').click();
+    await page.locator('#open-sessions').click();
     // A transient reachability miss in a list does not close a healthy socket.
     listingStatus = 503;
     await group(a).getByRole('button', { name: 'Refresh sessions' }).click();

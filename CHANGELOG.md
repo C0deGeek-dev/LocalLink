@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.2 — unreleased
+
+- Restyle the app after the LocalX site: near-black surfaces with a teal signal
+  colour, monospace labels, a refreshed light palette and a new icon. Give phones
+  most of the screen for the conversation: one compact header with app status,
+  a one-row session header with a back button that opens the session list as a
+  sheet, a single-row composer that grows with the draft, and the bottom
+  navigation hidden while typing. Draw icons in CSS so no images are loaded
+  outside the app's own files.
+
 ## 0.1.1 — unreleased
 
 - Automatically activate complete verified app updates and refresh open windows,

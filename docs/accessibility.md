@@ -12,7 +12,11 @@ conversation prose wraps, while code and tool output scroll independently and
 can receive keyboard focus. Status uses words as well as styling. Reduced-motion
 preferences disable animations, transitions and smooth scrolling. The composer and navigation stay outside the independently scrolling conversation
 so they never cover messages. Tablet/desktop layouts keep the project browser
-alongside the conversation; smaller screens use a collapsible picker. Opening a
+alongside the conversation. On phones the session list opens as a sheet from
+the back button in the session header (Escape or Close returns focus to it), and
+the bottom navigation hides while the composer has focus on touch devices; it
+returns only after a short delay so a tap on Send never lands on a moved control.
+At very large text sizes the header wraps instead of overflowing. Opening a
 session moves to the newest message without moving keyboard focus into the
 transcript. Scrolling back pauses following until Latest messages is chosen.
 Loading skeletons and activity dots are decorative; their adjacent text states

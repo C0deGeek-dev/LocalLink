@@ -192,9 +192,9 @@ try {
     assert.equal(await page.locator('#theme-preference').inputValue(), override);
     await page.locator('#theme-preference').selectOption('system');
     await page.emulateMedia({ colorScheme: 'dark' });
-    assert.equal(await page.locator('html').evaluate((node) => getComputedStyle(node).backgroundColor), 'rgb(28, 36, 34)');
+    assert.equal(await page.locator('html').evaluate((node) => getComputedStyle(node).backgroundColor), 'rgb(7, 11, 15)');
     await page.emulateMedia({ colorScheme: 'light' });
-    assert.equal(await page.locator('html').evaluate((node) => getComputedStyle(node).backgroundColor), 'rgb(245, 243, 236)');
+    assert.equal(await page.locator('html').evaluate((node) => getComputedStyle(node).backgroundColor), 'rgb(244, 247, 246)');
     await page.emulateMedia({ colorScheme });
     await page.locator('[data-destination="sessions"]').click();
     await page.locator('.project-group summary').click();

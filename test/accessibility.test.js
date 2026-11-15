@@ -43,7 +43,7 @@ test('theme defaults to system, restores only valid appearance and supports cros
   assert.equal(select.value, 'system'); assert.equal(attributes['data-theme'], undefined);
   select.value = 'dark'; events.change();
   assert.equal(attributes['data-theme'], 'dark');
-  assert.deepEqual(metas.map((meta) => meta.content), ['#1c2422', '#1c2422']);
+  assert.deepEqual(metas.map((meta) => meta.content), ['#070b0f', '#070b0f']);
   assert.equal(storage.get('locallink-appearance'), 'dark');
   events.storage({ key: 'unrelated', newValue: 'light' });
   assert.equal(select.value, 'dark');
@@ -51,7 +51,7 @@ test('theme defaults to system, restores only valid appearance and supports cros
   assert.equal(select.value, 'light');
   select.value = 'system'; events.change();
   assert.equal(attributes['data-theme'], undefined); assert.equal(storage.size, 0);
-  assert.deepEqual(metas.map((meta) => meta.content), ['#f5f3ec', '#1c2422']);
+  assert.deepEqual(metas.map((meta) => meta.content), ['#f4f7f6', '#070b0f']);
   assert.equal(themeFixture({ saved: 'dark' }).select.value, 'dark');
   assert.equal(themeFixture({ saved: 'invalid' }).select.value, 'system');
 });
