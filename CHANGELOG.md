@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3 — unreleased
+
+- Say "device" instead of "phone" wherever any paired browser is meant
+  (pairing, access, notifications and revocation copy). LocalHub#287.
+
 ## 0.1.2 — unreleased
 
 - Restyle the app after the LocalX site: near-black surfaces with a teal signal

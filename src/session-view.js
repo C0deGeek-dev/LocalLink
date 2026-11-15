@@ -3,14 +3,14 @@ import { compatibilityMessages } from './compatibility.js';
 import { reconcile, replyAnnouncer, keyedItems } from './accessibility.js';
 
 const phaseMessages = {
-  unpaired: 'Pair this phone to see your sessions.', choose: 'Choose a shared terminal session.',
+  unpaired: 'Pair this device to see your sessions.', choose: 'Choose a shared terminal session.',
   loading: 'Looking for shared sessions…', 'list-error': 'Could not list sessions. Check your PC and refresh.',
   offline: 'This project is offline. Start LocalPilot on your PC, then refresh.',
   connecting: 'Connecting to the terminal…', syncing: 'Waiting for the PC to report this session’s state. Controls are locked.',
   disconnected: 'Connection lost. The view may be out of date. Reconnect to fetch a fresh snapshot.',
   incompatible: 'This session uses an incompatible response. Update LocalPilot and LocalLink together.',
   refused: 'The PC refused this session. Check your access and whether the terminal is still sharing.',
-  closed: 'Session closed. On your PC, resume this session to keep its history, or start a new one, then enable phone access.',
+  closed: 'Session closed. On your PC, resume this session to keep its history, or start a new one, then share it for remote access.',
 };
 
 export function mountSessions(document, window) {
@@ -195,7 +195,7 @@ export function mountSessions(document, window) {
           throttled: 'Too many requests. Wait a moment, then try again.',
           forbidden: 'Access to this project needs checking.',
           error: 'Could not load shared sessions. Check your connection and try again.',
-          ready: items.length ? '' : 'No shared sessions. Open LocalPilot in this project on your PC and enable phone access.',
+          ready: items.length ? '' : 'No shared sessions. Open LocalPilot in this project on your PC and share a session for remote access.',
         };
         set('.project-status', messages[phase]);
         group.querySelector('.session-skeleton').hidden = phase !== 'loading';
@@ -244,7 +244,7 @@ export function mountSessions(document, window) {
     el('session-view').hidden = !model.selected || !paired;
     setText('session-browser-title', viewing ? 'Switch session' : 'Choose a shared session');
     el('refresh-projects').disabled = !!model.inventoryBusy;
-    setText('projects-status', model.inventoryIssue || (!model.workspaces.length && paired ? 'No projects are available to this phone. Check LocalPilot and this device’s access on your PC.' : ''));
+    setText('projects-status', model.inventoryIssue || (!model.workspaces.length && paired ? 'No projects are available to this device. Check LocalPilot and this device’s access on your PC.' : ''));
     const phaseMessage = model.phase === 'incompatible' ? compatibilityMessages[model.compatibility || 'invalid'] : phaseMessages[model.phase];
     setText('sessions-status', phaseMessage || 'Shared terminal connected.');
     renderProjects();

@@ -12,7 +12,7 @@ export function mountCompanion(document, window, sessions, checkAccess) {
   const notifications = new Notifications({ browser: window, fetch: window.fetch.bind(window), changed: renderNotifications });
   const device = new Device({ fetch: window.fetch.bind(window), changed: renderDevice, revoked() { sessions.revoke(); device.access(false); notifications.access(false); void checkAccess(); } });
   function renderDevice() {
-    text('device-status', device.authorized ? device.message || 'This phone’s access. Manage other devices on your PC with /remote devices.' : 'Pair this phone in Sessions to see its access.');
+    text('device-status', device.authorized ? device.message || 'This device’s access. Manage other devices on your PC with /remote devices.' : 'Pair this device in Sessions to see its access.');
     el('device-list').replaceChildren();
     if (device.record) {
       const record = device.record;
@@ -44,7 +44,7 @@ export function mountCompanion(document, window, sessions, checkAccess) {
     const key = JSON.stringify([sessions.key, sessions.projectLabel(), sessions.phase, sessions.asks, sessions.approval, sessions.canApprove]);
     if (key !== attentionKey) {
       attentionKey = key;
-      text('attention-status', !sessions.authorized ? 'Pair this phone in Sessions.' : !sessions.selected ? 'Choose a shared session in Sessions to see its requests.' : `${sessions.projectLabel()} / ${sessions.selected.name || 'Unnamed session'} · ${sessions.ready ? 'Connected in app' : 'View may be stale; approval controls locked. Answer waiting requests on the PC'}. Requests cover this attached session only.`);
+      text('attention-status', !sessions.authorized ? 'Pair this device in Sessions.' : !sessions.selected ? 'Choose a shared session in Sessions to see its requests.' : `${sessions.projectLabel()} / ${sessions.selected.name || 'Unnamed session'} · ${sessions.ready ? 'Connected in app' : 'View may be stale; approval controls locked. Answer waiting requests on the PC'}. Requests cover this attached session only.`);
       keyedItems(el('attention-list'), sessions.asks, (ask) => `${sessions.key}/${ask.ask_id}`, () => make('button', ''), (button, ask) => {
         setText(button, `${ask.tool || 'Request'} · ${ask.risk || 'Review required'} · ${sessions.projectLabel()} / ${sessions.selected.name || 'Unnamed session'}`);
         button.type = 'button';

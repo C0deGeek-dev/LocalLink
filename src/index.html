@@ -56,7 +56,7 @@
             <div id="pair-confirm" hidden>
               <p id="pair-origin" class="address"></p>
               <p>Pairing grants the access selected on your PC. Only continue if you recognise this address.</p>
-              <div class="actions"><button id="confirm-pair" type="button" data-pair-control>Pair this phone</button><button id="cancel-pair" type="button" class="secondary" data-pair-control>Cancel</button></div>
+              <div class="actions"><button id="confirm-pair" type="button" data-pair-control>Pair this device</button><button id="cancel-pair" type="button" class="secondary" data-pair-control>Cancel</button></div>
             </div>
             <button id="check-connection" type="button" class="secondary" data-pair-control>Check connection</button>
           </div>
@@ -113,7 +113,7 @@
           <h1 id="devices-title" tabindex="-1">Your connection.<br>Your choice.</h1>
           <div class="empty-state"><h2>Appearance</h2><label for="theme-preference">Theme</label><select id="theme-preference" aria-describedby="theme-help"><option value="system">Follow system</option><option value="light">Light</option><option value="dark">Dark</option></select><p id="theme-help" class="help">Follow system uses your device’s light or dark appearance. Your choice is saved on this browser when available.</p></div>
           <div class="empty-state"><h2>This device</h2><p id="device-status" role="status"></p><ul id="device-list"></ul><div class="actions"><button id="refresh-device" class="secondary">Refresh access</button><button id="revoke-device" class="secondary">Revoke this device</button></div>
-            <div id="revoke-confirm" hidden><p>End this phone’s access to all projects on this PC? Pair again on your PC to reconnect.</p><div class="actions"><button id="confirm-revoke">Revoke access</button><button id="cancel-revoke" class="secondary">Keep access</button></div></div>
+            <div id="revoke-confirm" hidden><p>End this device’s access to all projects on this PC? Pair again on your PC to reconnect.</p><div class="actions"><button id="confirm-revoke">Revoke access</button><button id="cancel-revoke" class="secondary">Keep access</button></div></div>
           </div>
           <div id="notification-settings" class="empty-state" hidden><h2>Notifications</h2><p>Connected in app and notifications enabled are separate. Lock-screen notifications contain generic text. Opening one fetches current state and never approves a request.</p><label for="notification-workspace">Project for notifications</label><select id="notification-workspace"></select><p id="notification-status" role="status"></p><div class="actions"><button id="enable-notifications">Enable notifications</button><button id="test-notification" class="secondary">Test notification</button><button id="off-notifications" class="secondary">Turn notifications off</button></div></div>
         </section>

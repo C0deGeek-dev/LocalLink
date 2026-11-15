@@ -2,7 +2,7 @@
   "id": "/",
   "name": "LocalLink",
   "short_name": "LocalLink",
-  "description": "Your LocalPilot sessions, on your phone.",
+  "description": "Your LocalPilot sessions, on your phone, tablet or other computer.",
   "lang": "en",
   "start_url": "/",
   "scope": "/",
