@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { setImmediate as nextTurn } from 'node:timers/promises';
 import { Sessions } from '../src/session.js';
 
 const origin = 'https://pc.example.test';
@@ -556,4 +557,31 @@ test('queued input has immediate feedback without changing the authoritative tur
   f.emit({ type: 'turn_started' }, { seq: 7 }); f.emit({ type: 'stopped', reason: 'complete' }, { seq: 8 });
   f.emit({ type: 'accepted' }, { id: f.connections[0].sent.at(-1).id });
   assert.equal(f.model.awaitingReply, false);
+});
+
+test('a renamed session updates the header and listing from the snapshot, a live record and a refreshed listing', async () => {
+  const f = fixture(); await f.attach({ name: 'From snapshot' });
+  assert.equal(f.model.selected.name, 'From snapshot');
+  f.emit({ type: 'session_renamed', name: 'Live name' }, { seq: 6 });
+  assert.equal(f.model.selected.name, 'Live name');
+  assert.equal(f.model.projects.get(workspace.id).items.find((item) => item.id === first.id).name, 'Live name');
+  f.emit({ type: 'session_renamed', name: null }, { seq: 7 });
+  assert.equal(f.model.selected.name, null);
+  const connection = f.model.connection;
+  f.model.fetch = async () => ({ ok: true, status: 200, json: async () => ({ sessions: [{ ...first, name: 'Listed name' }, second] }) });
+  await f.model.loadProject(workspace.id);
+  assert.equal(f.model.selected.name, 'Listed name');
+  assert.equal(f.model.connection, connection, 'a refreshed listing never reattaches');
+  f.emit({ type: 'session_renamed', name: 42 }, { seq: 8 });
+  assert.equal(f.model.selected.name, 'Listed name', 'an invalid name is ignored');
+});
+
+test('a completed /name or /rename reads the listing back for the new name', async () => {
+  const f = fixture(); await f.attach(); f.catalogue();
+  f.model.fetch = async () => ({ ok: true, status: 200, json: async () => ({ sessions: [{ ...first, name: 'After rename' }, second] }) });
+  f.model.submit('/name After rename');
+  const sent = f.connections[0].sent.at(-1);
+  f.emit({ type: 'command_result', name: 'name', message: 'Renamed.' }, { id: sent.id });
+  await nextTurn();
+  assert.equal(f.model.selected.name, 'After rename');
 });

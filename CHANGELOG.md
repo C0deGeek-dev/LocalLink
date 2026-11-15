@@ -5,6 +5,11 @@
 - Say "device" instead of "phone" wherever any paired browser is meant
   (pairing, access, notifications and revocation copy). LocalHub#287.
 
+- Keep the open session's name current: a refreshed project list, the snapshot
+  and a live `session_renamed` record update the header and the list without
+  reattaching, and a completed `/name` or `/rename` reads the list back.
+  LocalHub#289.
+
 ## 0.1.2 — unreleased
 
 - Restyle the app after the LocalX site: near-black surfaces with a teal signal
