@@ -10,6 +10,11 @@
   reattaching, and a completed `/name` or `/rename` reads the list back.
   LocalHub#289.
 
+- A notification tap opens the place its kind belongs to: an approval request
+  opens Attention, a finished turn opens Sessions, a test opens Devices. Only the
+  kind is read from the push; the visible text stays generic and links in a
+  payload are never followed. LocalHub#290.
+
 ## 0.1.2 — unreleased
 
 - Restyle the app after the LocalX site: near-black surfaces with a teal signal

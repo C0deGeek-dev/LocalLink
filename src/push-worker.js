@@ -74,9 +74,16 @@ self.addEventListener('fetch', (event) => {
     return response;
   })());
 });
+// The PC sends only a kind ({"k":"ask"|"stopped"|"test"}); the visible text stays generic.
+// The kind decides where a tap leads: an ask to Attention, a finished turn to its session.
+const destinations = { ask: 'attention', stopped: 'sessions', test: 'devices' };
+function pushKind(event) {
+  try { const kind = event.data?.json()?.k; return Object.hasOwn(destinations, kind) ? kind : 'update'; } catch { return 'update'; }
+}
 self.addEventListener('push', (event) => {
+  const kind = pushKind(event);
   event.waitUntil(self.registration.showNotification('LocalLink', {
-    body: 'There is an update on your PC. Open LocalLink to check.', tag: 'locallink-update',
+    body: 'There is an update on your PC. Open LocalLink to check.', tag: `locallink-${kind}`, data: { k: kind },
   }));
 });
 self.addEventListener('notificationclick', (event) => {
@@ -84,7 +91,8 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const client = windows.find((client) => new URL(client.url).origin === self.location.origin && new URL(client.url).pathname === '/');
-    if (client) { client.postMessage({ type: 'notification-open' }); await client.focus(); }
-    else await self.clients.openWindow('/#attention');
+    const destination = destinations[event.notification.data?.k] || 'attention';
+    if (client) { client.postMessage({ type: 'notification-open', destination }); await client.focus(); }
+    else await self.clients.openWindow(`/#${destination}`);
   })());
 });

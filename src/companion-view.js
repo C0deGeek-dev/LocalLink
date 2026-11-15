@@ -87,12 +87,12 @@ export function mountCompanion(document, window, sessions, checkAccess) {
   });
   const previousChanged = sessions.changed;
   sessions.changed = (model) => { previousChanged(model); device.access(model.authorized); notifications.access(model.authorized); renderAttention(); renderNotifications(); };
-  const refetch = async () => {
-    window.location.hash = 'attention';
+  const refetch = async (destination = 'attention') => {
+    window.location.hash = ['attention', 'sessions', 'devices'].includes(destination) ? destination : 'attention';
     const confirmed = await checkAccess();
     if (confirmed && sessions.authorized && sessions.selected) sessions.attach(sessions.selected.id);
   };
-  window.navigator.serviceWorker?.addEventListener('message', (event) => { if (event.data?.type === 'notification-open') void refetch(); });
+  window.navigator.serviceWorker?.addEventListener('message', (event) => { if (event.data?.type === 'notification-open') void refetch(event.data.destination); });
   window.addEventListener('focus', () => { if (window.location.hash === '#attention') void refetch(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden && window.location.hash === '#attention') void refetch(); });
   // Deadline changes disable buttons even when no socket frame arrives.
