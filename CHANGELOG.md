@@ -2,6 +2,10 @@
 
 ## 0.1.3 — unreleased
 
+- Ctrl+Enter (Cmd+Enter on a Mac) sends from any device, also with a touch
+  screen and a hardware keyboard; plain Enter still sends only with a keyboard
+  and pointer. LocalHub#286.
+
 - Say "device" instead of "phone" wherever any paired browser is meant
   (pairing, access, notifications and revocation copy). LocalHub#287.
 

@@ -13,6 +13,15 @@ const phaseMessages = {
   closed: 'Session closed. On your PC, resume this session to keep its history, or start a new one, then share it for remote access.',
 };
 
+// Composer keys: Ctrl/Cmd+Enter sends on every device; plain Enter sends only
+// with a fine pointer (a hardware keyboard), where Shift+Enter adds a line.
+// Touch keyboards keep Enter for a new line. Never during IME composition.
+export function composerKey(event, coarse) {
+  if (event.key !== 'Enter' || event.isComposing) return 'default';
+  if (event.ctrlKey || event.metaKey) return 'send';
+  return event.shiftKey || event.altKey || coarse ? 'default' : 'send';
+}
+
 export function mountSessions(document, window) {
   const el = (id) => document.getElementById(id);
   const make = (tag, text, className) => {
@@ -288,7 +297,7 @@ export function mountSessions(document, window) {
     forceLatest = false;
     el('jump-latest').hidden = followLatest || loading;
     el('session-composer').setAttribute('aria-busy', String(sending));
-    setText('composer-help', !model.ready ? 'Waiting for the session. Sending is locked.' : model.scope === 'observe' ? 'Observe only · send messages from your PC.' : sending ? 'Waiting for your PC to confirm delivery.' : model.busy ? 'Follow-ups are queued after the current turn.' : window.matchMedia('(pointer: coarse)').matches ? 'Send a message to this session.' : 'Enter to send · Shift+Enter for a new line.');
+    setText('composer-help', !model.ready ? 'Waiting for the session. Sending is locked.' : model.scope === 'observe' ? 'Observe only · send messages from your PC.' : sending ? 'Waiting for your PC to confirm delivery.' : model.busy ? 'Follow-ups are queued after the current turn.' : window.matchMedia('(pointer: coarse)').matches ? 'Send with the button, or Ctrl+Enter on a keyboard.' : 'Enter or Ctrl+Enter to send · Shift+Enter for a new line.');
     if (el('session-draft').value !== model.draft) { el('session-draft').value = model.draft; fitDraft(); }
     el('session-draft').disabled = model.scope !== 'control';
     el('send-input').disabled = !model.canSubmit || !model.draft.trim();
@@ -321,10 +330,9 @@ export function mountSessions(document, window) {
   el('session-draft').addEventListener('input', () => { model.setDraft(el('session-draft').value); render(); });
   el('session-composer').addEventListener('submit', (event) => { event.preventDefault(); forceLatest = true; model.submit(el('session-draft').value); });
   el('session-draft').addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing && !window.matchMedia('(pointer: coarse)').matches) {
-      event.preventDefault();
-      if (model.canSubmit) el('session-composer').requestSubmit();
-    }
+    if (composerKey(event, window.matchMedia('(pointer: coarse)').matches) !== 'send') return;
+    event.preventDefault();
+    if (model.canSubmit) el('session-composer').requestSubmit();
   });
   window.addEventListener('hashchange', () => {
     if (window.location.hash === '#sessions' && model.selected) window.requestAnimationFrame(() => { if (followLatest) jumpLatest(); });
