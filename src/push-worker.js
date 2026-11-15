@@ -1,6 +1,7 @@
-// Static shell only. No takeover, private response caching or mutation replay.
-/* global self, caches, fetch */
-const cacheName = 'locallink-shell-__SHELL_GENERATION__';
+// Verified static shell updates automatically. Never caches private responses or replays mutations.
+/* global self, caches, fetch, MessageChannel, setTimeout, clearTimeout */
+const generation = '__SHELL_GENERATION__';
+const cacheName = `locallink-shell-${generation}`;
 const shellFiles = /* __SHELL_FILES__ */ [];
 const shellPaths = new Set(shellFiles.map((file) => file.url));
 self.addEventListener('install', (event) => {
@@ -13,12 +14,31 @@ self.addEventListener('install', (event) => {
       }));
       const cache = await caches.open(cacheName);
       await Promise.all(responses.map(([url, response]) => cache.put(url, response)));
+      await self.skipWaiting();
     } catch (error) { await caches.delete(cacheName); throw error; }
   })());
 });
 self.addEventListener('activate', (event) => {
-  // Natural activation waits for every old controlled window to close.
   event.waitUntil((async () => {
+    await self.clients.claim();
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    await Promise.all(windows.map(async (client) => {
+      const url = new URL(client.url);
+      if (url.origin !== self.location.origin || !['/', '/index.html'].includes(url.pathname)) return;
+      const state = await new Promise((resolve) => {
+        const channel = new MessageChannel();
+        const finish = (state) => { clearTimeout(timer); channel.port1.close(); resolve(state); };
+        const timer = setTimeout(() => finish(null), 1500);
+        channel.port1.onmessage = ({ data }) => finish(data);
+        try { client.postMessage({ type: 'shell-update', generation }, [channel.port2]); }
+        catch { finish(null); }
+      });
+      if (state?.generation !== generation && !state?.defer) {
+        // Do not await navigation inside activate: that navigation may itself
+        // wait for activation to finish.
+        void client.navigate(client.url).catch(() => { /* Tab was closed. */ });
+      }
+    }));
     for (const name of await caches.keys()) {
       if (name.startsWith('locallink-shell-') && name !== cacheName) await caches.delete(name);
     }
@@ -32,6 +52,21 @@ self.addEventListener('fetch', (event) => {
   // HTML is only ever returned to a document navigation, never an API fetch.
   if (!navigation && (url.pathname === '/index.html' || !shellPaths.has(url.pathname))) return;
   event.respondWith((async () => {
+    // An online navigation gets current HTML, never a stale cached entry point.
+    // Failed/offline navigation can still open the last fully verified shell.
+    if (navigation) {
+      try {
+        const live = await fetch(request, { cache: 'no-store', redirect: 'error' });
+        if (live.ok && live.headers.get('content-type')?.includes('text/html')) {
+          const html = await live.clone().text();
+          const identity = /<meta name="locallink-generation" content="([a-f0-9]{64})">/.exec(html)?.[1];
+          if (identity === generation) return live;
+          // Do not serve an entry point from an unverified newer build. Install
+          // its entire shell first; activation will refresh this window.
+          event.waitUntil(self.registration.update().catch(() => {}));
+        }
+      } catch { /* Offline: use the complete installed generation. */ }
+    }
     const cache = await caches.open(cacheName);
     const response = await cache.match(navigation ? '/index.html' : url.pathname);
     // A missing pinned file must not fall back to bytes from another generation.

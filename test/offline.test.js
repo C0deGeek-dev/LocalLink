@@ -15,7 +15,8 @@ async function fixture(t) {
     revision: '0123456789abcdef0123456789abcdef01234567', dirty: false });
   const source = await readFile(join(out, 'push-worker.js'), 'utf8');
   const listeners = {}, stores = new Map(), fetched = [];
-  let failPath;
+  let failPath, liveHTML;
+  let skipped = 0, claimed = 0;
   const caches = {
     async open(name) {
       if (!stores.has(name)) stores.set(name, new Map());
@@ -25,8 +26,13 @@ async function fixture(t) {
     async keys() { return [...stores.keys()]; }, async delete(name) { return stores.delete(name); },
   };
   runInNewContext(source, {
-    self: { location: { origin: 'https://pc.test' }, addEventListener(type, fn) { listeners[type] = fn; } },
+    self: { location: { origin: 'https://pc.test' }, async skipWaiting() { skipped++; }, clients: { async claim() { claimed++; }, async matchAll() { return []; } }, addEventListener(type, fn) { listeners[type] = fn; } },
     URL, caches, fetch: async (url, options) => {
+      if (typeof url !== 'string') {
+        assert.equal(options.cache, 'no-store');
+        if (!liveHTML) throw new Error('offline');
+        return { ok: true, body: liveHTML, clone: () => ({ text: async () => liveHTML }), headers: { get: () => 'text/html' } };
+      }
       fetched.push([url, options]);
       if (url === failPath) throw new Error('offline');
       return { ok: true, body: await readFile(join(out, url.slice(1)), 'utf8') };
@@ -40,7 +46,7 @@ async function fixture(t) {
     listeners.fetch({ request: { url: new URL(path, 'https://pc.test').href, method: 'GET', mode: 'cors', destination: '', ...options }, respondWith(promise) { result = promise; } });
     return result;
   }
-  return { manifest, source, stores, fetched, lifecycle, request, fail(path) { failPath = path; } };
+  return { manifest, source, stores, fetched, lifecycle, request, fail(path) { failPath = path; }, live(html) { liveHTML = html; }, skipped: () => skipped, claimed: () => claimed };
 }
 
 test('offline shell contains exact static generation; APIs and non-document fetches never intercepted', async (t) => {
@@ -63,7 +69,7 @@ test('offline shell contains exact static generation; APIs and non-document fetc
   assert.equal(f.request('/api/sessions'), undefined);
 });
 
-test('failed install retains the previous generation and natural activation cleans only owned caches', async (t) => {
+test('failed install retains the previous generation; verified activation takes over and cleans only owned caches', async (t) => {
   const f = await fixture(t);
   f.stores.set('locallink-shell-previous', new Map([['/index.html', 'old shell']]));
   f.stores.set('another-app', new Map());
@@ -73,19 +79,36 @@ test('failed install retains the previous generation and natural activation clea
   assert.equal(f.stores.size, 3); // install never deletes the active generation
   await f.lifecycle('activate');
   assert.equal(f.stores.size, 2); assert.ok(f.stores.has('another-app'));
-  assert.doesNotMatch(f.source, /skipWaiting|clients\.claim/);
+  assert.equal(f.skipped(), 1); assert.equal(f.claimed(), 1);
 });
 
-test('offline registration never requests notification permission or reloads; waiting update preserves drafts', async () => {
-  const messages = [], callbacks = {};
+test('online navigation revalidates the installed generation; offline navigation uses the complete installed shell', async (t) => {
+  const f = await fixture(t); await f.lifecycle('install');
+  const generation = [...f.stores.keys()][0].replace('locallink-shell-', '');
+  f.live(`<!doctype html><meta name="locallink-generation" content="${generation}"><title>Current network HTML</title>`);
+  assert.match((await f.request('/', { mode: 'navigate', destination: 'document' })).body, /Current network HTML/);
+  f.live(null);
+  assert.match((await f.request('/', { mode: 'navigate', destination: 'document' })).body, /LocalLink/);
+});
+
+test('registration checks at startup, focus, reconnect and visibility; update handoff preserves drafts before reload', async () => {
+  const messages = [], callbacks = {}, workerCallbacks = {};
+  let checks = 0, saves = 0;
   const registration = { active: {}, waiting: null, installing: { addEventListener(type, fn) { callbacks[type] = fn; } },
-    addEventListener(type, fn) { callbacks[type] = fn; } };
-  const browser = { isSecureContext: true, navigator: { serviceWorker: { async register(url, options) {
-    assert.equal(url, '/push-worker.js'); assert.equal(options.updateViaCache, 'none'); return registration;
-  } } } };
-  await prepareOffline(browser, (message) => messages.push(message));
+    async update() { checks++; }, addEventListener(type, fn) { callbacks[type] = fn; } };
+  const browser = { isSecureContext: true, document: { hidden: false, querySelector: () => ({ content: 'old' }), addEventListener(type, fn) { callbacks[type] = fn; } },
+    addEventListener(type, fn) { callbacks[type] = fn; }, setInterval(fn, delay) { assert.equal(delay, 60000); callbacks.interval = fn; },
+    navigator: { serviceWorker: { addEventListener(type, fn) { workerCallbacks[type] = fn; }, async register(url, options) {
+      assert.equal(url, '/push-worker.js'); assert.equal(options.updateViaCache, 'none'); return registration;
+    } } } };
+  await prepareOffline(browser, (message) => messages.push(message), () => { saves++; return true; });
   assert.match(messages.at(-1), /available offline/);
-  registration.waiting = {}; callbacks.statechange();
-  assert.match(messages.at(-1), /update ready/); assert.match(messages.at(-1), /copy your drafts/);
-  assert.match(messages.at(-1), /Android recent apps/);
+  for (const name of ['focus', 'online', 'visibilitychange', 'interval']) { callbacks[name](); await Promise.resolve(); }
+  assert.equal(checks, 5);
+  let reply;
+  workerCallbacks.message({ data: { type: 'shell-update', generation: 'new' }, ports: [{ postMessage(value) { reply = value; } }] });
+  assert.equal(saves, 1); assert.deepEqual(reply, { generation: 'old', defer: false });
+  assert.match(messages.at(-1), /Updating the app/);
+  workerCallbacks.message({ data: { type: 'shell-update', generation: 'old' }, ports: [{ postMessage() {} }] });
+  assert.equal(saves, 1, 'the already-current page never prepares a reload loop');
 });

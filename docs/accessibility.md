@@ -2,7 +2,8 @@
 
 LocalLink follows the device's light/dark appearance by default. Devices →
 Appearance offers Follow system, Light and Dark. The browser saves only this
-appearance preference when storage is available. With storage blocked the choice
+appearance preference when storage is available. Automatic app updates also use
+a temporary, one-use per-tab draft handoff, removed on startup. With storage blocked the choice
 still works for the current page. Returning to Follow system removes the saved
 override and responds to system changes while the app is open.
 
@@ -43,6 +44,7 @@ npx playwright install chromium
 npm run check:a11y
 npm run check:projects
 npm run check:conversation
+npm run check:updates
 npm run verify:bundle
 ```
 

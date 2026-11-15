@@ -93,3 +93,18 @@ test('build refuses stale output and invalid provenance', async (t) => {
   await assert.rejects(buildBundle({ root, out, revision, dirty: true }), /must be empty/);
   await assert.rejects(buildBundle({ root, out: join(temp, 'bad'), revision: 'main', dirty: false }), /full Git/);
 });
+
+test('a version-only bump gives HTML, CSS, scripts and the worker a fresh generation', async (t) => {
+  const { temp, out } = await fixture(t);
+  const copy = join(temp, 'version-only');
+  await cp(join(root, 'src'), join(copy, 'src'), { recursive: true });
+  const pkg = JSON.parse(await readFile(join(root, 'package.json')));
+  const parts = pkg.version.split('.'); parts[2] = String(Number(parts[2]) + 1); pkg.version = parts.join('.');
+  await writeFile(join(copy, 'package.json'), JSON.stringify(pkg)); await writeFile(join(copy, 'VERSION'), `${pkg.version}\n`);
+  const next = join(temp, 'next'); await buildBundle({ root: copy, out: next, revision, dirty: false });
+  const old = await verifyBundle(out), fresh = await verifyBundle(next);
+  const css = (bundle) => bundle.manifest.files.find((file) => file.path.endsWith('/style.css')).path;
+  assert.notEqual(css(old), css(fresh));
+  assert.ok((await readFile(join(next, 'index.html'), 'utf8')).includes(`LocalLink ${pkg.version}`));
+  assert.notEqual(await readFile(join(out, 'push-worker.js'), 'utf8'), await readFile(join(next, 'push-worker.js'), 'utf8'));
+});

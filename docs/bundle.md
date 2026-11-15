@@ -68,19 +68,38 @@ Replace the complete pinned tree atomically when upgrading or rolling back.
 with `Cache-Control: no-cache`. It registers with scope `/` for the offline shell,
 independently of notification permission. A build-injected, integrity-checked list
 contains only the complete generation's HTML, manifest and content-addressed assets.
-Failed install leaves the old worker intact. The fetch handler serves the pinned
-shell for same-origin root document navigation and exact listed assets only;
-API/auth/pairing/session responses, worker downloads, non-document HTML fetches,
-query URLs and mutations pass through without interception. No dynamic cache writes.
+Failed install leaves the old worker intact. Online document navigation revalidates
+HTML without the HTTP cache, but only serves it when its generation is the already
+verified installed generation. A newer entry point triggers a full worker update;
+unverified HTML never mixes with the previous shell. Offline navigation uses the
+complete installed shell. Exact pinned assets are cache-first. API/auth/pairing/
+session responses, worker downloads, non-document HTML fetches, query URLs and
+mutations pass through without interception. No dynamic/private cache writes.
 
-The waiting update is announced without reload, `skipWaiting` or `clients.claim`.
-Finish or copy drafts, close every LocalLink browser tab and close the installed
-app from Android recent apps, then reopen. Background clients can delay activation;
-an incompatible old shell may need these steps before it can control the PC again.
-Drafts remain safe in the existing window but are not persisted across closing or
-reload. Natural activation deletes only old `locallink-shell-` caches after old
-controlled windows close. Other applications' caches are untouched. A missing cached
-asset fails closed rather than loading bytes from a different generation.
+A verified install calls `skipWaiting`; activation calls `clients.claim` and asks
+each same-origin app window for its current generation and a draft handoff. An
+outdated window is navigated automatically, including legacy windows without a
+handoff listener. A current window is not navigated again, avoiding reload loops.
+Navigation is not awaited inside activation, because it may wait for activation
+to complete itself. Old owned caches are removed; other apps' caches are untouched.
+
+The app checks on startup, focus, reconnect, visibility and once per visible minute.
+The build identity includes `VERSION` as well as source bytes: a version-only bump
+changes HTML, worker/cache and every asset URL. The app version is visible under
+App status. Bump `VERSION`, `package.json` and the package-lock root together.
+
+A one-use `sessionStorage` record, scoped to the current tab, hands off at most 32
+drafts, the active project/session identity and an unconfirmed-action flag. It is
+removed before parsing on the replacement page. It contains no credentials,
+pairing codes, transcript, API response or commands. Restoring rechecks access,
+fetches current session metadata and attaches; it never submits anything. When
+storage is blocked and a draft or action cannot be preserved, that existing window
+defers reload and explains how to copy/reload. Other new windows use the new build.
+
+`npm run check:updates` exercises real browser service workers over loopback:
+legacy cache migration with two open tabs, automatic version-only upgrades on
+focus, fresh CSS/JS URLs, offline reopen and partial-download failure retaining
+the previous complete shell. It never contacts a real gateway or uses credentials.
 
 ## Browser/server boundary
 
@@ -213,6 +232,7 @@ No subscription endpoint, keys or API results are persisted by page scripts.
 
 - [Node test runner](https://nodejs.org/docs/latest-v24.x/api/test.html)
 - [ESLint flat configuration](https://eslint.org/docs/latest/use/configure/configuration-files)
+- [Service Worker lifecycle, clients and messaging](https://www.w3.org/TR/service-workers/)
 - [Web app manifest](https://www.w3.org/TR/appmanifest/)
 
 Source, tests, copy and icon geometry are original. The PNG icons are raster

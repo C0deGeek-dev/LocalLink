@@ -30,6 +30,8 @@ jobs:
         run: npm run check:projects
       - if: runner.os == 'Linux'
         run: npm run check:conversation
+      - if: runner.os == 'Linux'
+        run: npm run check:updates
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: locallink-${{ github.sha }}-${{ matrix.os }}

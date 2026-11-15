@@ -38,11 +38,11 @@ export async function buildBundle({ root, out, revision, dirty }) {
     sources.set(path, extension === 'png' ? bytes : Buffer.from(bytes.toString('utf8').replace(/\r\n/g, '\n')));
   }
   // The digest names a complete asset generation; it never depends on timestamps.
-  const digest = sha256(json([...sources].map(([path, bytes]) => [path, sha256(bytes)])));
+  const digest = sha256(json({ version, sources: [...sources].map(([path, bytes]) => [path, sha256(bytes)]) }));
   const payload = new Map();
   for (const [path, bytes] of sources) {
     if (path === 'index.html' || path === 'manifest.webmanifest' || path === 'push-worker.js') {
-      payload.set(path, Buffer.from(bytes.toString('utf8').replaceAll('__ASSET_DIGEST__', digest)));
+      payload.set(path, Buffer.from(bytes.toString('utf8').replaceAll('__ASSET_DIGEST__', digest).replaceAll('__APP_VERSION__', version)));
     } else payload.set(`assets/${digest}/${path}`, bytes);
   }
   // The worker does not cache itself. Its exact-byte list pins one full shell.

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.1 — unreleased
+
+- Automatically activate complete verified app updates and refresh open windows,
+  including clients still using the earlier cache-first worker. Check on open,
+  focus, reconnect and while visible. Include the app version in asset/cache
+  identity and show the installed version. Retain one complete offline shell;
+  incomplete updates cannot replace it. Hand drafts to the updated tab without
+  replaying input or approvals; disclose any unconfirmed action. Add real browser
+  upgrade tests covering multiple tabs, version-only changes and failed installs.
+
 ## 0.1.0 — unreleased
 
 - Add a tablet/desktop project sidebar, an independently scrolling conversation

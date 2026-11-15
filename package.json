@@ -1,6 +1,6 @@
 {
   "name": "@localx/locallink",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -15,6 +15,7 @@
     "verify:bundle": "node scripts/verify-bundle.js dist",
     "preview": "node scripts/preview.js",
     "check:a11y": "node scripts/check-accessibility.js",
+    "check:updates": "node scripts/check-updates.js",
     "check:conversation": "node scripts/check-conversation.js",
     "check:projects": "node scripts/check-projects.js"
   },

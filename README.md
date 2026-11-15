@@ -27,9 +27,10 @@ npm run preview
 Open `http://127.0.0.1:4173`. This local preview has three destinations and
 system light/dark themes with a manual choice under Devices → Appearance.
 On tablet and desktop, projects and the conversation sit side by side. On smaller
-screens, the project picker collapses above the chat. Only the appearance choice is saved in browser storage; drafts and session
-state stay in memory. Pairing requires the app to be served by your
-LocalPilot gateway at its trusted HTTPS address; the HTTP preview cannot pair
+screens, the project picker collapses above the chat. The appearance choice is
+saved in browser storage. Drafts normally stay in memory; an automatic app update uses a one-use, per-tab draft handoff and deletes
+it as soon as the updated page starts. Session responses are never stored. Pairing
+requires the app to be served by your LocalPilot gateway at its trusted HTTPS address; the HTTP preview cannot pair
 and does not proxy the gateway. The preview can cache its static shell; live
 sessions, approvals and notifications require the gateway.
 
@@ -67,7 +68,8 @@ project. Browsing keeps your current session connected. Listing errors offer
 manual recovery; the client never retries a listing automatically.
 
 Switching sessions keeps separate drafts for each project/session in memory.
-Drafts do not survive reload or closing the app. The active project ID and session
+Ordinary reloads and closing the app discard drafts; an automatic app update
+hands them to the replacement page in the same tab. The active project ID and session
 are shown beside Stop and approvals; browsing another project does not retarget
 these actions. Attention covers only the attached session.
 
@@ -104,8 +106,8 @@ when scope or turn state is unknown. Observe access can only view. A lost
 connection keeps the displayed view and unsent draft in this page, with the
 last-sync time. **Reconnect** fetches a new snapshot; it never resends input.
 If a mutation reply is lost, its outcome is explicitly unknown: check the PC
-before sending again. Drafts are held in memory per session, and disappear on
-reload or when access is revoked. There is no offline queue or automatic retry.
+before sending again. Drafts are held in memory per session and disappear on ordinary reload or
+revocation; automatic updates preserve drafts in the same tab. There is no offline queue or automatic retry.
 
 The app shell works offline after it has been installed successfully by the
 browser. It never stores pairing, authentication or session responses. An offline
@@ -113,9 +115,20 @@ reload opens the shell; reconnect to the PC to retrieve session data. If the PC
 reports unknown turn state, the phone stays attached with controls locked and the
 previous view dimmed until authoritative state arrives.
 
-Updates are announced under **App status** without interrupting drafts or approvals. Finish or copy
-your drafts, close every LocalLink browser tab and close LocalLink from Android
-recent apps, then reopen. Drafts are not saved after closing or reloading. A
+Online app updates install automatically as a complete, integrity-checked build,
+including CSS and JavaScript, and refresh open windows. The version is visible under
+**App status**. Opening or returning to the app checks for an update, and a visible
+app checks every minute. Every version bump changes the asset/cache identity even
+when source files are unchanged. Offline, the last complete installed build remains
+available.
+
+An automatic update hands drafts and the selected session to the replacement page
+using temporary, per-tab session storage, consumed and deleted immediately on
+startup. Access is checked again and the session is reattached; no input or approval
+is replayed. If an action was unconfirmed, the app says to check the PC. With tab
+storage blocked and an unsent draft or unconfirmed action, the existing window
+stays open and asks you to copy the draft and reload; newly opened pages still use
+the new version. Ordinary closing or reload does not save drafts. A
 protocol mismatch explains whether to update the app or LocalPilot on the PC.
 
 The gateway must report device scope in `GET /api/workspaces` (LocalPilot
