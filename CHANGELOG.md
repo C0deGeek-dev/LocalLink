@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.5 — unreleased
+
+- Choosing a project under Notifications shows what your PC has for this
+  device: on, off, stopped, or off on the PC. When the push service ended this
+  device's subscription (or the PC's notification key changed), the Sessions
+  screen says "Notifications stopped for …" when the app opens, with a link to
+  turn them on again. Needs LocalPilot with the `status` push request; an
+  older PC leaves the state unconfirmed, as before. LocalHub#290.
+
 ## 0.1.4 — unreleased
 
 - A message you sent stays in view while your PC works on it. The PC
