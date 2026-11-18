@@ -1,5 +1,9 @@
 # Accessibility
 
+LocalLink targets WCAG 2.2 level AA, which includes WCAG 2.1 AA. The automated
+checks run axe-core with the 2.0, 2.1 and 2.2 A/AA rules; a real TalkBack
+walkthrough (below) is still required before claiming conformance.
+
 LocalLink follows the device's light/dark appearance by default. Devices →
 Appearance offers Follow system, Light and Dark. The browser saves only this
 appearance preference when storage is available. Automatic app updates also use
@@ -13,8 +17,12 @@ can receive keyboard focus. Status uses words as well as styling. Reduced-motion
 preferences disable animations, transitions and smooth scrolling. The composer and navigation stay outside the independently scrolling conversation
 so they never cover messages. Tablet/desktop layouts keep the project browser
 alongside the conversation. On phones the session list opens as a sheet from
-the back button in the session header (Escape or Close returns focus to it), and
-the bottom navigation hides while the composer has focus on touch devices; it
+the back button in the session header (Escape or Close returns focus to it).
+While the sheet is open the conversation under it is inert, so neither Tab nor
+a screen reader reaches controls it covers. The session header keeps long
+names to two lines on phones; the access details show the full session and
+project name. The
+bottom navigation hides while the composer has focus on touch devices; it
 returns only after a short delay so a tap on Send never lands on a moved control.
 At very large text sizes the header wraps instead of overflowing. Opening a
 session moves to the newest message without moving keyboard focus into the
@@ -23,7 +31,13 @@ Loading skeletons and activity dots are decorative; their adjacent text states
 what is loading or happening, and reduced motion disables their animation.
 
 Keyboard navigation includes Skip to content, destination heading focus, native
-disclosure controls and an approval dialog. Opening an approval focuses the request
+disclosure controls and an approval dialog. The page title names the destination
+or the open session. After pairing, focus moves to the workspace heading or the
+session list instead of the hidden pairing card; after revoking, it moves to the
+Devices heading while the status line reports the outcome. Show code reveals the
+pairing code while it is typed over from the PC. The current session in the list
+is marked with `aria-current`. Component borders and focus rings have at least
+3:1 contrast; the composer shows the same focus outline as other controls. Opening an approval focuses the request
 heading; Escape or Close dismisses it without answering. Focus returns to the
 request button, or the Attention heading when that request is no longer present.
 The dialog keeps the project, exact detail, risk and expiry above the answer buttons.
@@ -64,6 +78,11 @@ fresh isolated browser context, simulates API/socket responses, and blocks servi
 workers. It never contacts a real gateway or uses personal credentials. Playwright
 and axe-core are development dependencies and are excluded from the client bundle.
 Linux CI runs this check with Playwright's Chromium alongside the normal checks.
+
+The 2026-11-18 local run, with the WCAG 2.2 rules, passed 82 Node tests and 22
+axe scans in headless Chrome with no violations. It also asserts focus after
+pairing and revoking, the inert conversation under the phone session sheet, its
+Close button, page titles, Show code and the composer focus outline.
 
 The 2026-11-10 local run passed 58 Node tests and 22 axe scans in headless Edge:
 320 CSS pixels wide; light/dark; normal/doubled root text for pairing, session,

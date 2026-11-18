@@ -63,7 +63,7 @@ try {
     async function scan(state) {
       if (!await page.evaluate(() => !!window.axe)) await page.addScriptTag({ url: `${origin}/__test/axe.js` });
       const violations = await page.evaluate(async () => (await window.axe.run(document, {
-        runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'] },
+        runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] },
       })).violations.map(({ id, nodes }) => ({ id, targets: nodes.map((node) => node.target) })));
       assert.deepEqual(violations, [], `${colorScheme}/${state}`);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, state);

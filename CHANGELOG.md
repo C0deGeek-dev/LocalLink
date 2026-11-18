@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.6 — unreleased
+
+- Accessibility to WCAG 2.2 AA (LocalHub#292 audit). On a phone, the chat
+  under the session list can no longer be reached with Tab or a screen reader,
+  and the list has a real Close button. Focus no longer disappears after
+  pairing or after revoking this device. Session and project buttons have
+  borders with 3:1 contrast, the message field shows a clear focus outline, and
+  the page title names where you are. The access details show the full session
+  and project name, a Show code button reveals the pairing code, the current
+  session is announced as current instead of as a toggle, the ⓘ sign is no
+  longer read out, and "App update ready" is announced. The automated checks
+  include the WCAG 2.2 rules.
+
 ## 0.1.5 — unreleased
 
 - Choosing a project under Notifications shows what your PC has for this

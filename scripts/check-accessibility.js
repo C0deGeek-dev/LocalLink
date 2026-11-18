@@ -42,6 +42,7 @@ try {
         let status = 200, body = {};
         if (path === '/api/workspaces') { status = paired ? 200 : 401; body = { scope: 'control', workspaces: [{ id: workspace, label: 'Example project', online: true }] }; }
         else if (path === '/api/sessions') body = { sessions: [{ id: session, name: 'Accessibility review', live: true }] };
+        else if (path === '/api/device/revoke') { paired = false; body = { revoked: true }; }
         else if (path === '/api/device') body = { id: 'abcdef0123456789', name: 'Test phone', scope: 'control', this_workspace_only: false, paired_unix: 1 };
         else status = 404;
         return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
@@ -65,7 +66,7 @@ try {
     async function scan(state) {
       if (!await page.evaluate(() => !!window.axe)) await page.addScriptTag({ url: `${origin}/__test/axe.js` });
       const result = await page.evaluate(async () => {
-        const audit = await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'] } });
+        const audit = await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] } });
         return { violations: audit.violations.map(({ id, nodes }) => ({ id, targets: nodes.map((node) => node.target) })), incomplete: audit.incomplete.map(({ id, nodes }) => ({ id, nodes: nodes.map(({ target, failureSummary }) => ({ target, failureSummary })) })) };
       });
       assert.deepEqual(result.violations, [], `${colorScheme}/${state}: ${JSON.stringify(result.violations)}`);
@@ -100,11 +101,39 @@ try {
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => document.activeElement.id === 'main');
     assert.equal(await page.locator('#main').evaluate((node) => node === document.activeElement), true);
+    // The pairing code can be shown while typing it over from the PC.
+    await page.locator('#pair-code').fill('example');
+    await page.locator('#show-code').click();
+    assert.equal(await page.locator('#pair-code').getAttribute('type'), 'text');
+    assert.equal(await page.locator('#show-code').getAttribute('aria-pressed'), 'true');
+    await page.locator('#show-code').click();
+    assert.equal(await page.locator('#pair-code').getAttribute('type'), 'password');
+    await page.locator('#pair-code').fill('');
     paired = true;
     await page.locator('#check-connection').click();
+    // The pairing card hides once paired; focus moves on instead of being lost.
+    await page.waitForFunction(() => ['workspace-title', 'session-browser-title'].includes(document.activeElement.id));
     await page.locator('.project-group summary').click();
     await page.locator('.session-choice').click();
     await page.getByText('Working', { exact: true }).waitFor();
+    assert.equal(await page.locator('.session-choice[aria-current="true"]').count(), 1);
+    assert.equal(await page.title(), 'Accessibility review – LocalLink');
+    assert.equal((await page.locator('#session-access').ariaSnapshot()).includes('ⓘ'), false);
+    // On a phone the session list covers the chat; the chat is inert meanwhile.
+    await page.locator('#open-sessions').click();
+    assert.equal(await page.locator('#session-view').evaluate((node) => node.inert), true);
+    await page.locator('#close-sessions').waitFor();
+    if (output) await page.screenshot({ path: join(output, `session-sheet-${colorScheme}.png`) });
+    for (let index = 0; index < 12; index++) {
+      await page.keyboard.press('Tab');
+      assert.equal(await page.evaluate(() => !document.getElementById('session-view').contains(document.activeElement)), true, 'Tab reached the chat under the session list');
+    }
+    await page.locator('#close-sessions').click();
+    await page.waitForFunction(() => document.activeElement.id === 'open-sessions');
+    assert.equal(await page.locator('#session-view').evaluate((node) => node.inert), false);
+    assert.equal(await page.locator('#close-sessions').isHidden(), true);
+    await page.locator('#session-draft').focus();
+    assert.equal(await page.locator('.composer-row').evaluate((node) => getComputedStyle(node).outlineStyle), 'solid');
     await page.locator('.code-block').last().focus();
     await page.evaluate(() => {
       window.focusedCode = document.activeElement;
@@ -140,6 +169,7 @@ try {
     await page.locator('[data-destination="attention"]').click();
     await page.waitForFunction(() => document.activeElement.id === 'attention-title');
     assert.equal(await page.locator('#attention-title').evaluate((node) => node === document.activeElement), true);
+    assert.equal(await page.title(), 'Attention – LocalLink');
     await page.locator('#attention-list button').first().focus();
     await page.evaluate(() => { window.focusedAsk = document.activeElement; });
     live({ type: 'permission_ask', ask_id: 'ask2', tool: 'read_file', detail: 'README.md', risk: 'low', expires_at_ms: Date.now() + 120000 });
@@ -205,6 +235,11 @@ try {
     peer.close({ code: 1001 });
     await page.locator('#session-state').filter({ hasText: 'Connection lost' }).waitFor();
     await scan('disconnected');
+    // Revoking hides the confirmation; focus stays in Devices, not lost.
+    await page.locator('[data-destination="devices"]').click();
+    await page.locator('#revoke-device').click();
+    await page.locator('#confirm-revoke').click();
+    await page.waitForFunction(() => document.activeElement.id === 'devices-title');
     assert.deepEqual(errors, []);
     await context.close();
   }

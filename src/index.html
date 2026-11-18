@@ -21,7 +21,8 @@
       <header class="masthead">
         <a class="brand" href="#sessions"><img src="/assets/__ASSET_DIGEST__/icon.svg" alt="" width="32" height="32"><span class="brand-name">LocalLink<span>YOUR PC, WITH YOU</span></span></a>
         <div class="masthead-status">
-          <details id="app-status" class="app-status"><summary><span id="app-update-label" role="status">App status</span></summary><div class="app-status-panel"><p id="app-version" class="help">LocalLink __APP_VERSION__</p><p id="app-update" class="help"></p></div></details>
+          <details id="app-status" class="app-status"><summary><span id="app-update-label">App status</span></summary><div class="app-status-panel"><p id="app-version" class="help">LocalLink __APP_VERSION__</p><p id="app-update" class="help"></p></div></details>
+          <span id="app-update-announce" class="visually-hidden" role="status"></span>
           <span class="connection" id="connection">Not connected</span>
         </div>
       </header>
@@ -48,6 +49,7 @@
               <label for="pair-code">Pairing link or code</label>
               <p id="code-help" class="help">On your PC, open LocalPilot’s remote pairing screen. Keep it open while you pair.</p>
               <input id="pair-code" name="pairing" type="password" required maxlength="4096" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="code-help" data-pair-control>
+              <button id="show-code" type="button" class="secondary" aria-pressed="false" aria-controls="pair-code" data-pair-control>Show code</button>
               <label for="pair-workspace">Workspace ID <span class="help">(only for a code)</span></label>
               <input id="pair-workspace" name="workspace" type="text" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="workspace-help" data-pair-control>
               <p id="workspace-help" class="help">A complete pairing link includes this. For a code, copy the 16-character workspace ID from your PC.</p>
@@ -61,6 +63,7 @@
             <button id="check-connection" type="button" class="secondary" data-pair-control>Check connection</button>
           </div>
           <p id="notification-lapsed" class="attention-banner" hidden><span id="notification-lapsed-text" role="status"></span> <a id="notification-lapsed-open" href="#devices">Open Devices</a></p>
+          <button id="close-sessions" type="button" class="secondary sheet-close" hidden>Close</button>
           <details id="session-browser" class="session-browser" open hidden>
             <summary id="session-browser-title">Choose a shared session</summary>
             <p class="help browser-help">Open a project to see its shared sessions. Your current session stays connected while you browse.</p>
@@ -76,7 +79,7 @@
               <h1 id="session-name" tabindex="-1"></h1>
               <p id="session-state" role="status"></p>
               <p id="session-project" class="eyebrow"></p>
-              <details class="connection-details"><summary id="session-access">Access scope unconfirmed</summary><p id="session-pc" class="help"></p><p id="last-sync" class="help"></p><p class="help">Tool activity covers the current turn. Messages from your PC appear with the next snapshot.</p><button id="session-check-access" type="button" class="secondary">Check access</button></details>
+              <details class="connection-details"><summary id="session-access">Access scope unconfirmed</summary><p id="session-full" class="help"></p><p id="session-pc" class="help"></p><p id="last-sync" class="help"></p><p class="help">Tool activity covers the current turn. Messages from your PC appear with the next snapshot.</p><button id="session-check-access" type="button" class="secondary">Check access</button></details>
               <button id="reconnect-session" type="button" class="secondary" hidden>Reconnect</button>
               <button id="back-to-sessions" type="button" class="secondary" hidden>Back to sessions</button>
             </header>
