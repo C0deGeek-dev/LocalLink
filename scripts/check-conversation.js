@@ -73,6 +73,11 @@ try {
           index % 2 ? 'I will check the layout, the message delivery states and the scrolling behaviour across screen sizes.\n\nThe conversation should remain easy to follow while work continues.' : `Review step ${index / 2 + 1}: improve the companion experience.` })) });
       await page.getByText('Ready', { exact: true }).waitFor();
       await page.waitForFunction(() => { const s = document.getElementById('conversation-scroll'); return s.scrollTop > 0 && s.scrollHeight - s.clientHeight - s.scrollTop < 5; });
+      // A taller composer (help text wrapping with wider fonts) must not leave the chat short of the newest message.
+      await page.evaluate(() => { document.getElementById('composer-help').style.paddingBottom = '3rem'; });
+      await page.waitForFunction(() => { const s = document.getElementById('conversation-scroll'); return s.scrollHeight - s.clientHeight - s.scrollTop < 5; });
+      await page.evaluate(() => { document.getElementById('composer-help').style.paddingBottom = ''; });
+      await page.waitForFunction(() => { const s = document.getElementById('conversation-scroll'); return s.scrollHeight - s.clientHeight - s.scrollTop < 5; });
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       const boxes = await page.locator('#session-browser, #session-view').evaluateAll((nodes) => nodes.map((node) => { const b = node.getBoundingClientRect(); return { x: b.x, width: b.width, right: b.right }; }));
       if (width >= 760) assert.ok(boxes[1].x >= boxes[0].right - 1, 'tablet and desktop have a persistent sidebar');

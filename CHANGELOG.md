@@ -2,6 +2,11 @@
 
 ## 0.1.6 — unreleased
 
+- The conversation stays on the newest message when the chat area gets
+  smaller, for example when the help text under the message field wraps to a
+  second line on a narrow phone. Before, the last line could end up just out of
+  view. This also made the Linux browser check fail since 0.1.3.
+
 - Accessibility to WCAG 2.2 AA (LocalHub#292 audit). On a phone, the chat
   under the session list can no longer be reached with Tab or a screen reader,
   and the list has a real Close button. Focus no longer disappears after

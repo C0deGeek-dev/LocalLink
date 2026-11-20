@@ -85,6 +85,11 @@ export function mountSessions(document, window) {
   if (window.ResizeObserver) new window.ResizeObserver(([entry]) => {
     el('session-view').style.setProperty('--composer-height', `${entry.target.offsetHeight}px`);
   }).observe(document.querySelector('.composer-panel'));
+  // The chat area shrinks when the composer or header wraps to another line or
+  // a touch keyboard opens. While following, stay on the newest message.
+  if (window.ResizeObserver) new window.ResizeObserver(() => {
+    if (followLatest && el('session-loading').hidden) scroller.scrollTop = scroller.scrollHeight;
+  }).observe(scroller);
   // Touch keyboards take half the screen; hide the bottom navigation while composing.
   const touch = window.matchMedia('(pointer: coarse)');
   // Restore it only after a tap on Send or Stop has completed, so the layout never shifts under the finger.
