@@ -1,8 +1,10 @@
 # Accessibility
 
 LocalLink targets WCAG 2.2 level AA, which includes WCAG 2.1 AA. The automated
-checks run axe-core with the 2.0, 2.1 and 2.2 A/AA rules; a real TalkBack
-walkthrough (below) is still required before claiming conformance.
+checks run axe-core with the 2.0, 2.1 and 2.2 A/AA rules, and the code was
+audited by hand against the criteria axe cannot measure (2026-11-18, LocalHub#292).
+TalkBack support rests on that WCAG 2.2 AA conformance; it has not been fully
+walked through on a device (see below).
 
 LocalLink follows the device's light/dark appearance by default. Devices →
 Appearance offers Follow system, Light and Dark. The browser saves only this
@@ -118,9 +120,16 @@ returning to the latest message and rejected input retaining its draft. Set
 `LOCALLINK_CONVERSATION_OUTPUT` to retain screenshots. It uses synthetic gateway
 fixtures and does not establish real-device or live-model acceptance.
 
-## Android TalkBack walkthrough — pending
+## Android TalkBack walkthrough — accepted without a full run
 
-No real TalkBack walkthrough has been performed or recorded. Use a trusted HTTPS
+On 2026-11-21 the product owner accepted TalkBack support without a complete
+recorded walkthrough. The phone was used on a Galaxy S25 for the rest of the
+playbook, but the steps below were not all run with TalkBack on. Screen-reader
+use is covered by WCAG 2.2 AA conformance as the fallback: names, roles, states,
+focus order, status messages and contrast are checked automatically and by audit.
+Anything TalkBack does wrong in practice is a bug to report, not a known gap.
+
+To record a full walkthrough later, use a trusted HTTPS
 phone address and an attended PC session. Record Android version, phone model,
 Chrome version, TalkBack version, client revision, date, and a recording location.
 Hide pairing codes, private conversation and commands before sharing a recording.
@@ -151,5 +160,5 @@ Hide pairing codes, private conversation and commands before sharing a recording
    If a hardware keyboard is available, repeat Tab/Shift+Tab, Enter/Space and dialog
    Escape. Record observations, unexpected speech/focus, fixes and a repeat result.
 
-Keep real-device accessibility acceptance open until the recording and observed
-results exist. The isolated browser checks do not replace it.
+A recorded run adds evidence on top of the automated checks; it is not
+required for acceptance.
